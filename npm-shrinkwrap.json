@@ -1,12 +1,12 @@
 {
   "name": "personal-harness",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "personal-harness",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "dependencies": {
         "@agentclientprotocol/sdk": "1.5.0",
         "@anthropic-ai/claude-agent-sdk": "0.3.267",
@@ -24,7 +24,16 @@
       },
       "engines": {
         "node": ">=22.19.0"
-      }
+      },
+      "bin": {
+        "ph": "dist/cli.js"
+      },
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ]
     },
     "node_modules/@agentclientprotocol/sdk": {
       "version": "1.5.0",

@@ -1,10 +1,22 @@
 # Verification and limits
 
-Verified on Ubuntu 26.04, Linux x86_64, on **2026-09-25 (Asia/Seoul)**. Version 0.2 includes real model calls as well as local tests. Authentication, inference, account billing, and Windows visual appearance are distinct checks.
+Verified on Ubuntu 26.04, Linux x86_64, on **2026-09-25 (Asia/Seoul)**. Version 0.3 adds package/installer and provider-registration checks. The real subscription calls below were completed for version 0.2; they were not repeated merely for packaging. Authentication, inference, account billing, and Windows visual appearance are distinct checks.
+
+## Version 0.3 distribution and provider checks
+
+- The complete TypeScript build and 33 automated tests passed. ChatGPT is the displayed/default command name; the legacy gpt alias and real model/provider IDs are preserved.
+- A real Pi RPC process used an explicitly registered OpenAI-compatible endpoint served by a local test fixture. It received a streamed response, then stopped after a synthetic 429. Exactly two fixture requests were observed across the two turns; there was no fallback or retry. This is a transport test, not a paid-provider or local-model quality benchmark.
+- CLI tests reject API registration without --allow-paid-api, reserved subscription route overrides, plaintext credentials in registration JSON and remote endpoints mislabeled as local. The original three subscription routes remain enabled after registration/removal.
+- Both prefix-local and global npm tarball installations outside the checkout resolved Pi, the Claude bridge and its official executable. The global package also completed ph setup with a fresh editor profile, using only previously verified tool binaries/cache. The installed CLI passed real Pi session/review replacement and the compatible-endpoint fixture tests. No saved account credentials were copied into the test profile.
+- Workspace setup was run in an isolated installation home, including pinned runtimes, LazyVim restoration and parser compilation. Initial testing exposed background parser installation and first-start runtime discovery problems. The corrected setup waits for installation, refreshes discovery and loads all nine required parsers before reporting success; a failed Lua check exits nonzero. Fresh-parser and repeated setup checks passed.
+- PowerShell 7.6.6 parsed and executed the installer test with mocked WSL/download commands. It covered a ready WSL2 user, missing distribution, WSL1, root user, failed Linux setup, pinned font files and preservation of existing terminal settings. This did not run WSL, register Windows fonts, test Windows PowerShell 5.1 or visually verify acrylic on a Windows desktop.
+- README contains installation/use, shortcuts and tutorials. Implementation, registration details and distribution limits are kept in separate docs. The npm tarball uses an explicit files allowlist and publishable shrinkwrap; private profiles, sessions and verification logs are excluded.
+
+Windows support in this release means Windows x64 through WSL2 Ubuntu 24.04+. Native Windows and ARM64 runtime installers remain unimplemented. Other provider catalogs and compatible protocols are configurable, but each account, endpoint and model still needs its own operational validation.
 
 ## Automated and runtime checks
 
-- TypeScript compilation and **30 automated tests passed**. Tests cover dangling, cyclic and escaping symlinks; overlapping directory/Git worktree locks; orphan-worker leases; interrupted-operation reconciliation; v1 task migration; warning retention from the middle of large and older logs; and UTF-8 byte budgets and paging.
+- TypeScript compilation and **33 automated tests passed**. Tests cover dangling, cyclic and escaping symlinks; overlapping directory/Git worktree locks; orphan-worker leases; interrupted-operation reconciliation; v1 task migration; warning retention from the middle of large and older logs; and UTF-8 byte budgets and paging.
 - Instruction approvals bind exact contents and imported files. Checkpoint proposals remain pending until user approval; stale proposals are rejected. Cross-task artifact reads, malformed paging and unauthorized MCP requests are rejected.
 - The real loopback MCP implementation was tested for review restrictions, task isolation, full command output capture before compaction, failed exit status, and shared artifact/checkpoint tools. The native Google workspace stays empty of project context, and unmanaged global context is rejected.
 - Synthetic ACP tests exercise negotiation, permission requests, cancellation and a single surfaced quota error. Managed Google sessions advertise no native filesystem or terminal capabilities; unexpected native read/write/execute callbacks are rejected without side effects. Named harness MCP tools still work through the parent guard.
@@ -13,19 +25,19 @@ Verified on Ubuntu 26.04, Linux x86_64, on **2026-09-25 (Asia/Seoul)**. Version 
 
 Pinned runtime versions: Node 22.22.1; Pi/pi-ai/pi-tui 0.87.1; Claude bridge 0.8.0; Claude Agent SDK 0.3.267 / Claude Code 2.1.267; Google Antigravity ACP 1.2.1; ACP SDK 1.5.0; MCP SDK 1.30.1; Neovim 0.11.6; Zellij 0.45.1; zjstatus 0.25.0. Download provenance is in [installed-tools.json](../verification/installed-tools.json) and the installers. The earlier editor bootstrap also verified LazyVim 16.0.1, a compiled Python parser, Zig 0.15.2 / clang 20.1.2 and tree-sitter CLI 0.27.0.
 
-## Real subscription worker checks
+## Real subscription worker checks (version 0.2)
 
 These checks used disposable synthetic projects and the existing subscription logins. Each worker read a small Python implementation, corrected a subtraction bug, ran an unchanged validation script, preserved a warning in the middle of roughly 80 KB of output, proposed a checkpoint, and completed a read-only review using the saved raw-result reader. The test driver approved only the synthetic fixture operations and its checkpoint. A separate streamed response was cancelled for each provider.
 
 | Worker | Model reported in the successful run | Read/edit/run | Warning and raw-result review | Checkpoint and cancellation |
 | --- | --- | --- | --- | --- |
-| GPT | `gpt-6-sol` | Passed | Passed | Passed |
+| ChatGPT | `gpt-6-sol` | Passed | Passed | Passed |
 | Claude | `claude-sonnet-4-6` | Passed | Passed | Passed |
 | Gemini via official Antigravity ACP | `gemini-3.8-flash-high` | Passed | Passed | Passed |
 
-After Gemini completed its task, the same task was handed to GPT and then Claude for read-only review. Both retrieved the warning marker and validation result while preserving the task ID, approved decisions and project files. This is a real cross-provider handoff check; it does not imply that all model combinations or future service errors have been tested.
+After Gemini completed its task, the same task was handed to ChatGPT and then Claude for read-only review. Both retrieved the warning marker and validation result while preserving the task ID, approved decisions and project files. This is a real cross-provider handoff check; it does not imply that all model combinations or future service errors have been tested.
 
-The first GPT/Claude run passed while the old Google path failed. Google was tested again after migration and the user's new Antigravity login; the table combines those successful provider runs. Earlier Gemini CLI session creation and any test before the authentication correction are **not** counted as subscription inference verification.
+The first ChatGPT/Claude run passed while the old Google path failed. Google was tested again after migration and the user's new Antigravity login; the table combines those successful provider runs. Earlier Gemini CLI session creation and any test before the authentication correction are **not** counted as subscription inference verification.
 
 ### Google transport correction
 
@@ -59,12 +71,26 @@ ph-edit --headless '+lua print("EDITOR_STARTUP_OK")' +qa
 The opt-in live test consumes subscription allowance. After login and billing confirmation, run only the providers you intend to test:
 
 ```sh
-node scripts/verify-live.mjs gpt claude gemini
+node scripts/verify-live.mjs chatgpt claude gemini
 ```
 
 It creates a disposable project and isolated task state under the system temporary directory, prints each outcome, and writes a private report and RPC log there. It does not change account settings. Reports can contain prompts and tool outputs; keep them private. Repeat a manual `/switch` or `/review` on the same synthetic task to inspect cross-provider continuity. Use simulated quota failures rather than deliberately exhausting an account.
 
 For an interactive check, open a disposable project with `ph open .`, visit each tab, edit and save a file, detach and reattach. Do not end an active working session merely to test restoration or refresh decorations. Machine-specific logs, state, screenshots and backups remain excluded from Git.
+
+The Windows installer-flow check can be run from a checkout with PowerShell:
+
+```sh
+pwsh -NoProfile -File tests/windows-installer.ps1
+```
+
+To repeat the package-runtime tests, set PH_TEST_CLI to the installed package's absolute dist/cli.js path before running:
+
+```sh
+node --import tsx --test tests/pi-runtime.test.ts tests/providers.test.ts
+```
+
+These use temporary profiles and a loopback fixture, with no external model calls. Full installation checks can set PH_INSTALL_HOME to a new temporary directory and use scripts/install.py --archive FILE --sha256 HASH. Do not use existing account/state directories for a clean-install test.
 
 ## Remaining limits
 

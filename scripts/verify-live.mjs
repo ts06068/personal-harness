@@ -10,8 +10,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const providers = process.argv.slice(2);
-if (!providers.length || providers.some(p => !['gpt', 'claude', 'gemini'].includes(p))) throw new Error('Usage: node scripts/verify-live.mjs gpt|claude|gemini [...]');
+const providers = process.argv.slice(2).map(p => p === "gpt" ? "chatgpt" : p);
+if (!providers.length || providers.some(p => !['chatgpt', 'claude', 'gemini'].includes(p))) throw new Error('Usage: node scripts/verify-live.mjs chatgpt|claude|gemini [...]');
 const root = mkdtempSync(join(tmpdir(), 'ph-live-'));
 const project = join(root, 'project'); mkdirSync(project);
 const state = join(root, 'state');
@@ -48,7 +48,7 @@ reader.on('line', line => {
     if (event.method === 'select') {
       let value;
       if (event.title.includes('Select model')) {
-        value = selectedProvider === 'gpt' ? event.options.find(x => x === 'gpt-6-sol') : event.options.find(x => /sonnet-4-6/.test(x));
+        value = selectedProvider === 'chatgpt' ? event.options.find(x => x === 'gpt-6-sol') : event.options.find(x => /sonnet-4-6/.test(x));
         value ||= event.options[0];
       } else if (event.title.startsWith('Checkpoint proposal')) value = 'Approve';
       send(value ? { type: 'extension_ui_response', id: event.id, value } : { type: 'extension_ui_response', id: event.id, cancelled: true });

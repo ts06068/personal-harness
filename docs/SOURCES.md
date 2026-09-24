@@ -1,6 +1,6 @@
 # Sources and pinned interfaces
 
-Inspected through 2026-09-25. Installed source, pinned archives and `package-lock.json` define the tested contracts. Provider terms and account entitlements can change.
+Inspected through 2026-09-25. Installed source, pinned archives and `npm-shrinkwrap.json` define the tested contracts. Provider terms and account entitlements can change.
 
 ## Provider interfaces
 
@@ -32,3 +32,15 @@ Pi 0.87 session replacement recreates extensions. Selection intent is persisted 
 - [zjstatus 0.25.0](https://github.com/dj95/zjstatus/releases/tag/v0.25.0): pinned local WebAssembly bars with terminal-default backgrounds. The runtime permission prompt was checked even though this layout uses no command widget.
 
 Theme backgrounds, timer behavior and layout replacement were checked against the installed runtimes. A real disposable Zellij session demonstrated that live layout replacement can duplicate panes, so updates apply to new sessions. This preserves existing user sessions rather than promising safe hot reload.
+
+## Distribution and Windows
+
+- [npm package metadata](https://docs.npmjs.com/cli/v11/configuring-npm/package-json/): bin entries, platform constraints and published files.
+- [npm shrinkwrap](https://docs.npmjs.com/cli/v11/configuring-npm/npm-shrinkwrap-json/): publishable dependency lock used by the installed CLI.
+- [WSL installation](https://learn.microsoft.com/en-us/windows/wsl/install) and [commands](https://learn.microsoft.com/en-us/windows/wsl/basic-commands): distribution setup and explicit WSL2 selection.
+- [Windows Terminal fragments](https://learn.microsoft.com/en-us/windows/terminal/json-fragment-extensions): per-user UTF-8 profile installation without rewriting settings.json.
+
+Additional provider registration follows the installed Pi 0.87.1 provider catalog
+and models.json schema. Local and compatible API fixture tests verify the
+registered route; support for an API protocol is not proof of account entitlement
+or a successful request to every provider in that catalog.

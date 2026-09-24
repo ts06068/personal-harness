@@ -1,9 +1,10 @@
 # Personal Harness implementation plan
 
 Approved scope (2026-09-25): a general-purpose SSH workspace for programming,
-research, writing and personal projects. Keep Pi, Neovim and Zellij. GPT, Claude
+research, writing and personal projects. Keep Pi, Neovim and Zellij. ChatGPT, Claude
 and Gemini remain manually selectable primary workers. At a rate limit, save,
-stop and let the user select another subscription. No paid API fallback.
+stop and let the user select another worker. Subscription-only defaults remain;
+API/local providers require explicit registration and are never automatic fallback.
 
 ## Hardening
 
@@ -26,7 +27,7 @@ stop and let the user select another subscription. No paid API fallback.
 - The current worker can propose_checkpoint during an ordinary turn. /checkpoint
   lets the user approve, edit or reject it. Proposals never approve themselves;
   no additional summarizer model is called.
-- Share these tools through Pi for GPT/Claude and a managed authenticated loopback HTTP MCP
+- Share these tools through Pi for ChatGPT/Claude and a managed authenticated loopback HTTP MCP
   server for Gemini, owned by the parent so tools cannot race task-state writes.
 - Preserve raw tool outputs before reducing model-facing output to 8 KiB.
   Use Pi result hooks and the parent-owned Google MCP tool path. Record real
@@ -58,7 +59,7 @@ MCP task isolation, native Google profile isolation, cancellation and non-TUI re
 Check real editor rendering and a disposable Zellij session before updating
 the managed layout for future sessions. Preserve existing credentials and legacy storage locations.
 
-Use synthetic projects for real GPT/Claude/Gemini response, read, edit, execution,
+Use synthetic projects for real ChatGPT/Claude/Gemini response, read, edit, execution,
 cancel, handoff and review checks. Simulate quota exhaustion. Compare the same
 task/model's total usage and quality before making efficiency claims. Distinguish
 runtime checks, real inference, account attestations and Windows visual checks in
@@ -81,3 +82,33 @@ capabilities. Keep the legacy `gemini-cli-acp` route ID only for stored tasks an
 billing attestations. The new official credential store requires a separate
 login; tokens are not copied. Missing usage is recorded as unknown. See the
 verification report for the actual completed live checks and remaining limits.
+
+## Distribution and model registration (version 0.3)
+
+Approved follow-up scope: easy installation; Windows native or WSL operation;
+ChatGPT naming; and additional providers through explicit API/local registration.
+Use Linux x86_64 on Linux or Windows x64 through WSL2 Ubuntu 24.04+. Native Windows
+and ARM64 execution are not implemented in this release.
+
+- Package compiled JavaScript, configuration and runtime installers with an npm
+  bin entry and published shrinkwrap. Resolve dependencies through Node so npm
+  hoisting works outside the source checkout.
+- Distribute a versioned npm tarball with SHA256SUMS through a GitHub Release.
+  Support direct npm installation and a Python installer that also installs Node.
+  Short-name npm registry publication is separate from this release.
+- Add a PowerShell WSL2 setup flow, preserving existing distributions and Terminal
+  settings. Install the font and a dedicated acrylic Terminal profile for the
+  current Windows user. WSL has separate provider logins.
+- Use ChatGPT in commands and labels, retaining gpt as a compatibility alias.
+  Preserve actual provider/model IDs and existing accounts/tasks.
+- Add explicit provider registration, Pi catalog discovery, compatible endpoints
+  and local loopback servers. API registration requires --allow-paid-api; display
+  its billing type. Additional subscriptions require OAuth and an account
+  attestation. Never copy credentials between workers or select a fallback.
+- Keep README content to installation/use, shortcuts and tutorials. Move
+  architecture, operations, distribution details and test evidence into docs/.
+
+Validation: run regression tests, a real Pi request against a local compatible
+fixture, simulated 429 handling, production-only tarball installation outside
+the checkout and first editor startup. Test PowerShell parsing/control flow
+without claiming that mocked WSL commands are actual Windows execution.

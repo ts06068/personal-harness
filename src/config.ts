@@ -3,9 +3,11 @@ import { join } from "node:path";
 import { binDir, configDir, dataRoot, editorApp, privateDir, profileDir, repoRoot } from "./paths.js";
 import { atomicJson } from "./state.js";
 import { subscriptionEnv, type Provider } from "./security.js";
+import { piCLIPath, claudeCLIPath } from "./dependencies.js";
+import { customModels, enabledProviders, isSubscription } from "./providers.js";
 
-export const piCLI = join(repoRoot, "node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js");
-export const claudeCLI = join(repoRoot, "node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude");
+export const piCLI = piCLIPath;
+export const claudeCLI = claudeCLIPath;
 export const claudeHome = join(dataRoot, "claude");
 export const geminiHome = join(dataRoot, "google");
 export const googleACP = join(dataRoot, "tools/antigravity-acp-1.2.1/agy_acp_server.par");
@@ -20,9 +22,10 @@ export function configure(): void {
     retry: { enabled: false, maxRetries: 0, provider: { maxRetries: 0 } },
     cacheWarming: "off", enableAnalytics: false, enableInstallTelemetry: false,
     compaction: { enabled: false }, defaultProjectTrust: "never",
-    enabledModels: ["openai-codex/*", "claude-bridge/*", "gemini-cli-acp/*"],
+    enabledModels: enabledProviders().map(id => `${id}/*`),
     defaultTools: ["read", "bash", "edit", "write", "grep", "find", "ls"],
   });
+  atomicJson(join(profileDir, "models.json"), customModels());
   atomicJson(join(profileDir, "claude-bridge.json"), {
     askClaude: { enabled: false },
     provider: { strictMcpConfig: true, autoMemoryEnabled: false, longContextExtraUsage: false, plan: "pro", pathToClaudeCodeExecutable: claudeCLI },
@@ -50,6 +53,7 @@ export function harnessEnv(review = false): NodeJS.ProcessEnv {
 
 export function billingFile(): string { return join(configDir, "billing.json"); }
 export function billingConfirmed(provider: Provider): boolean {
+  if (!isSubscription(provider)) return enabledProviders().includes(provider);
   if (!existsSync(billingFile())) return false;
   const config = JSON.parse(readFileSync(billingFile(), "utf8"));
   return config[provider]?.extraUsageDisabled === true;

@@ -7,9 +7,10 @@ import { binDir, configDir, profileDir, projectPath, repoRoot } from "./paths.js
 import { assertManagedProject, assertPrivateAuthStore, assertProvider, billingEnvNames, PROVIDERS, type Provider } from "./security.js";
 import { acquireProjectLock, renderHandoff, TaskStore } from "./state.js";
 import { workspaceName } from "./workspace-ui.js";
+import { ALIASES, enabledProviders, providerLabel, readProviders } from "./providers.js";
+import { claudeExtensionPath } from "./dependencies.js";
 
-const aliases: Record<string, Provider> = { gpt: "openai-codex", claude: "claude-bridge", gemini: "gemini-cli-acp" };
-function provider(value?: string): Provider { const p = aliases[value || ""] || value || ""; assertProvider(p); return p; }
+function provider(value?: string): Provider { const p = ALIASES[value || ""] || value || ""; assertProvider(p); return p; }
 async function run(command: string, args: string[], cwd: string, env = harnessEnv(), track?: (pid: number) => void): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, env, stdio: "inherit" });
@@ -34,6 +35,9 @@ function authStatus(): Record<string, boolean | null> {
 
 async function main(): Promise<number> {
   const [command = "help", arg, ...rest] = process.argv.slice(2);
+  if (command === "--version" || command === "version") { console.log(JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")).version); return 0; }
+  if (command === "setup") return run("python3", [join(repoRoot, "scripts/setup.py"), ...[arg, ...rest].filter((s): s is string => s !== undefined)], repoRoot, process.env);
+  if (command === "providers") { await (await import("./provider-command.js")).providerCommand(arg, rest); configure(); return 0; }
   configure();
   if (command === "ui" && arg === "reload") throw new Error("Live layout replacement is unavailable: Zellij cannot reliably preserve running pane commands. New workspaces use the new bars; keep existing sessions until their work is saved and finished.");
   if (command === "doctor") {
@@ -42,7 +46,7 @@ async function main(): Promise<number> {
       claude: version(claudeCLI), gemini: existsSync(googleACP) ? "Antigravity ACP 1.2.1 (installed; run install-google.py to verify hashes)" : "MISSING / FAILED",
       neovim: version(join(binDir, "nvim")), zellij: version(join(binDir, "zellij")),
       compiler: version(join(binDir, "cc")), treesitter: version(join(binDir, "tree-sitter")),
-    }, credentialsPresent: authStatus(), billingConfirmed: Object.fromEntries(PROVIDERS.map(p => [p, billingConfirmed(p)])), excludedEnvironmentVariableNames: billingEnvNames(),
+    }, credentialsPresent: authStatus(), billingConfirmed: Object.fromEntries(PROVIDERS.map(p => [p, billingConfirmed(p)])), registeredProviders: enabledProviders().map(id => ({ id, label: providerLabel(id) })), excludedEnvironmentVariableNames: billingEnvNames(),
       authenticationCheck: "Local storage markers only; the official Google Antigravity ACP server validates its own OAuth credentials during connection. null means unknown.",
       liveProviderValidation: "Not inferred from installation or credentials. Run the verification protocol in docs/VERIFICATION.md.",
     };
@@ -55,8 +59,8 @@ async function main(): Promise<number> {
   }
   if (command === "login") {
     const p = provider(arg);
-    if (p === "openai-codex") {
-      console.log("In Pi, run /login and select OpenAI Codex (ChatGPT), then /quit. Do not choose an API-key provider.");
+    if (p === "openai-codex" || readProviders().some(extra => extra.id === p)) {
+      console.log(`In Pi, run /login ${p}, complete authentication, then /quit. Route: ${providerLabel(p)}.`);
       return run(process.execPath, [piCLI, "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--no-tools", "--no-approve", "--provider", p], repoRoot);
     }
     if (p === "claude-bridge") return run(claudeCLI, ["auth", "login"], repoRoot);
@@ -91,15 +95,15 @@ async function main(): Promise<number> {
       }
       assertManagedProject(project); assertPrivateAuthStore(join(profileDir, "auth.json")); store.recoverInterrupted();
       const args = [piCLI, "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-context-files", "--no-approve",
-        "--extension", join(repoRoot, "dist/extension.js"), "--extension", join(repoRoot, "node_modules/pi-claude-bridge/src/index.ts"),
+        "--extension", join(repoRoot, "dist/extension.js"), "--extension", claudeExtensionPath,
         "--theme", join(repoRoot, "config/pi/ph-mono.json"), "--use-theme", "ph-mono",
-        "--session-dir", join(store.dir, "sessions"), "--models", "openai-codex/*,claude-bridge/*,gemini-cli-acp/*", "--tools", "read,bash,edit,write,grep,find,ls,read_task_artifact,propose_checkpoint"];
+        "--session-dir", join(store.dir, "sessions"), "--models", enabledProviders().map(id => `${id}/*`).join(","), "--tools", "read,bash,edit,write,grep,find,ls,read_task_artifact,propose_checkpoint"];
       if (rest.includes("--rpc")) args.push("--mode", "rpc");
       else console.log("Personal Harness: /switch selects the primary worker; /task shows saved state. Escape cancels the active turn.");
       return await run(process.execPath, args, project, harnessEnv(), release.track);
     } finally { release(); }
   }
-  console.log(`Personal Harness — code, research, writing, and personal projects\n  ph doctor\n  ph login gpt|claude|gemini\n  ph billing confirm gpt|claude|gemini --extra-usage-off\n  ph open PROJECT          Zellij + LazyVim + agent\n  ph agent PROJECT         Agent only\n  ph status PROJECT        Task and handoff\n  ph reconcile PROJECT ID completed|failed 'observed result'\n  ph context PROJECT FILE  Select input before starting an agent\n\nIn Pi: /switch, /review, /task, /handoff, /usage, /instructions, /checkpoint, /ui motion full|reduced|off. No automatic paid fallback.`);
+  console.log(`Personal Harness — code, research, writing, and personal projects\n  ph setup [--dry-run]     Install workspace tools and settings\n  ph doctor\n  ph providers list|catalog|add|remove\n  ph login chatgpt|claude|gemini|REGISTERED_ID\n  ph billing confirm chatgpt|claude|gemini --extra-usage-off\n  ph open PROJECT          Zellij + LazyVim + agent\n  ph agent PROJECT         Agent only\n  ph status PROJECT        Task and handoff\n  ph reconcile PROJECT ID completed|failed 'observed result'\n  ph context PROJECT FILE  Select input before starting an agent\n\nIn Pi: /switch, /review, /task, /handoff, /usage, /instructions, /checkpoint, /ui motion full|reduced|off. No automatic fallback. Additional API routes require explicit registration.`);
   return 0;
 }
 main().then(code => { process.exitCode = code; }).catch(error => { console.error(String(error)); process.exitCode = 1; });

@@ -1,0 +1,9 @@
+{
+  "id": "custom-api",
+  "label": "My compatible API",
+  "billing": "api",
+  "baseUrl": "https://replace-with-your-endpoint.example/v1",
+  "api": "openai-completions",
+  "apiKeyEnv": "PH_MODEL_CUSTOM_KEY",
+  "models": [{ "id": "replace-with-provider-model-id" }]
+}

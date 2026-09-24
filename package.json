@@ -1,7 +1,6 @@
 {
   "name": "personal-harness",
-  "version": "0.2.0",
-  "private": true,
+  "version": "0.3.0",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"
@@ -9,7 +8,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",
@@ -25,5 +25,41 @@
     "@types/node": "22.19.15",
     "tsx": "4.22.4",
     "typescript": "6.0.3"
-  }
+  },
+  "description": "A personal AI workspace with Neovim, Zellij, selectable subscription/API/local workers, and Windows WSL2 setup.",
+  "bin": {
+    "ph": "dist/cli.js"
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ts06068/personal-harness.git"
+  },
+  "homepage": "https://github.com/ts06068/personal-harness",
+  "bugs": {
+    "url": "https://github.com/ts06068/personal-harness/issues"
+  },
+  "files": [
+    "dist/*.js",
+    "config/",
+    "docs/",
+    "examples/providers/",
+    "scripts/setup.py",
+    "scripts/setup-editor.lua",
+    "scripts/install_paths.py",
+    "scripts/bootstrap-tools.py",
+    "scripts/bootstrap-editor-tools.py",
+    "scripts/install-launchers.py",
+    "scripts/install-ui.py",
+    "scripts/install-google.py",
+    "scripts/rollback.py",
+    "npm-shrinkwrap.json",
+    "PLAN.md",
+    "verification/installed-tools.json"
+  ]
 }

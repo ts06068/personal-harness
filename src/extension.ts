@@ -4,7 +4,8 @@ import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@e
 import type { Model } from "@earendil-works/pi-ai";
 import { billingConfirmed, geminiHome } from "./config.js";
 import { profileDir, projectPath } from "./paths.js";
-import { assertManagedProject, assertPrivateAuthStore, assertRoute, classifyFailure, confinedPath, PROVIDER_LABELS, PROVIDERS, type Provider } from "./security.js";
+import { assertManagedProject, assertPrivateAuthStore, assertRoute, classifyFailure, confinedPath, type Provider } from "./security.js";
+import { ALIASES, enabledProviders, providerLabel, readProviders } from "./providers.js";
 import { TaskStore } from "./state.js";
 import { registerGemini } from "./gemini.js";
 import { Instructions, decideCheckpoint, pendingCheckpoints, usageReport } from "./workflow.js";
@@ -87,11 +88,13 @@ export default function extension(pi: ExtensionAPI): void {
       if (!ctx.isIdle()) throw new Error("Stop the active turn with Escape and wait for it to settle before switching.");
       store.assertSwitchable();
       if (pendingCheckpoints(store.dir, store.task.id).length) { await reviewCheckpoints(ctx); if (pendingCheckpoints(store.dir, store.task.id).length) throw new Error("Review or reject pending checkpoint proposals before switching."); }
-      const aliases: Record<string, Provider> = { gpt: "openai-codex", claude: "claude-bridge", gemini: "gemini-cli-acp" };
-      let provider = aliases[args.trim()] || (PROVIDERS.includes(args.trim() as Provider) ? args.trim() as Provider : undefined);
+      const providers = enabledProviders();
+      let provider = ALIASES[args.trim()] || (providers.includes(args.trim()) ? args.trim() : undefined);
+      if (args.trim() && !provider) throw new Error("Provider is not enabled. Use ph providers add in the shell, then restart the agent.");
       if (!provider) {
-        const choice = await ctx.ui.select("Select primary worker", PROVIDERS.map(value => PROVIDER_LABELS[value]));
-        provider = PROVIDERS.find(value => PROVIDER_LABELS[value] === choice);
+        const choices = providers.map(value => `${providerLabel(value)} [${value}]`);
+        const choice = await ctx.ui.select("Select primary worker", choices);
+        provider = choice === undefined ? undefined : providers[choices.indexOf(choice)];
       }
       if (!provider) return;
       if (!billingConfirmed(provider)) throw new Error(`Account extra-usage setting is unconfirmed. Run: ph billing confirm ${provider} --extra-usage-off after checking your account.`);
@@ -111,7 +114,7 @@ export default function extension(pi: ExtensionAPI): void {
     } catch (error) { if (!changing) notify(ctx, String(error), true); else process.stderr.write(`Switch failed: ${String(error)}\n`); }
     finally { changing = false; }
   }
-  pi.registerCommand("switch", { description: "Checkpoint and select GPT / Claude / Gemini as primary worker", handler: (args, ctx) => switchTo(args, ctx, false) });
+  pi.registerCommand("switch", { description: "Checkpoint and select ChatGPT / Claude / Gemini or a registered provider", handler: (args, ctx) => switchTo(args, ctx, false) });
   pi.registerCommand("review", { description: "Start an explicitly selected read-only review segment", handler: (args, ctx) => switchTo(args, ctx, true) });
   pi.registerCommand("task", { description: "Show task; /task goal|next|decision|add|reconcile ...", handler: async (args, ctx) => {
     try {
@@ -157,7 +160,7 @@ export default function extension(pi: ExtensionAPI): void {
       } catch (error) { notify(ctx, String(error), true); }
       finally { changing = false; }
     }
-    tools(); visual.attach(ctx); ctx.ui.setStatus("ph", selected ? `${review ? "REVIEW" : "WORK"} · ${selected}` : "Choose /switch · subscription only");
+    tools(); visual.attach(ctx); ctx.ui.setStatus("ph", selected ? `${review ? "REVIEW" : "WORK"} · ${providerLabel(store.task.provider || "")} · ${selected}` : `Choose /switch · ${readProviders().length ? "registered routes only" : "subscription only"}`);
   });
   pi.on("model_select", (event, ctx) => { current = ctx; if (!changing && `${event.model.provider}/${event.model.id}` !== selected) { selected = undefined; gemini.reset(); notify(ctx, "Use /switch before sending input so the handoff starts a fresh session."); } });
   pi.on("input", (_event, ctx) => { current = ctx; try { guard(ctx); return { action: "continue" }; } catch (error) { notify(ctx, String(error), true); return { action: "handled" }; } });

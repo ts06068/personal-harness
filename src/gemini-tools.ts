@@ -13,7 +13,8 @@ import { callTaskTool, taskTools } from "./task-tools.js";
 import { Instructions } from "./workflow.js";
 import { RESULT_BYTES, resultEnvelope } from "./artifacts.js";
 import type { TaskStore } from "./state.js";
-import { privateDir, repoRoot } from "./paths.js";
+import { privateDir } from "./paths.js";
+import { piRoot } from "./dependencies.js";
 
 // Give Google's official model loop the same Pi tools through MCP. Its native
 // tools are disabled. This stays in the parent process so
@@ -27,7 +28,7 @@ export async function startGeminiTools(store: TaskStore, options: {
   const taskId = store.task.id;
   const lifecycle = new AbortController();
   // Pinned Pi submodule: avoid loading its whole editor/runtime barrel again.
-  const { createCodingTools, createReadOnlyTools, createBashTool, createLocalBashOperations } = await import(pathToFileURL(join(repoRoot, "node_modules/@earendil-works/pi-coding-agent/dist/core/tools/index.js")).href) as typeof import("@earendil-works/pi-coding-agent");
+  const { createCodingTools, createReadOnlyTools, createBashTool, createLocalBashOperations } = await import(pathToFileURL(join(piRoot, "dist/core/tools/index.js")).href) as typeof import("@earendil-works/pi-coding-agent");
   const tools = new Map([...createReadOnlyTools(store.project), ...(options.review ? [] : createCodingTools(store.project, {
     bash: { spawnHook: context => ({ ...context, env: subscriptionEnv(context.env) }) },
   }))].map(tool => [tool.name, tool]));

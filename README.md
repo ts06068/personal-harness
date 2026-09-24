@@ -1,163 +1,77 @@
 # Personal Harness
 
-A personal AI workspace for research, programming, manuscript writing, software development, and hobby projects. Work over SSH, edit files in Neovim, and choose GPT, Claude, or Gemini as the primary worker for each task.
+Use ChatGPT, Claude, Gemini, or a provider you register from one terminal workspace. Edit with Neovim, move between work tabs with Zellij, and switch workers when you choose.
 
-You choose the worker. When a provider reaches its rate limit, the harness saves the task and waits for you to switch. It does not automatically switch to a paid model API.
+## Install and start
 
-**The commands are `ph` and `ph-edit`.** The old `rh` commands have been removed.
+### Windows
 
-[Getting started](#getting-started) · [Terminal fonts](#terminal-font-setup) · [First task](#your-first-task-about-10-minutes) · [Zellij keys](#zellij-move-between-workspaces) · [Neovim keys](#neovim-edit-files) · [Model switching](#choose-and-switch-ai-workers) · [Troubleshooting](#troubleshooting)
+Use **Windows Terminal + WSL2 Ubuntu on an x64 PC**. The workspace runs inside WSL; this is not a native Windows runtime.
 
-## What is on the screen?
-
-| Part | Purpose | What you type there |
-| --- | --- | --- |
-| **Zellij** | Keeps your terminal workspace alive across SSH disconnects; provides tabs and panes | Keyboard shortcuts to move between tabs/panes |
-| **`edit` tab** | Neovim with LazyVim and a file tree | Text, editor commands such as `:w`, and editor shortcuts |
-| **`agent` tab** | Pi with Personal Harness commands and the selected AI worker | Requests in plain language; `/task`, `/switch`, `/review`, etc. |
-| **`run` tab** | An ordinary shell in your project directory | Shell commands such as `git diff` or `python3 script.py` |
-
-A **tab** is one workspace page. A **pane** is one terminal region inside a tab. A Neovim **window** is a split inside the editor; a Neovim **buffer** is an opened file. The three Zellij tabs share the same project files.
-
-Keep Zellij **locked** while typing in the editor or agent. “Locked” means its shortcuts are mostly disabled so your keystrokes reach the application; your files and terminal are still usable.
-
-## Getting started
-
-### Already installed and logged in?
-
-For version 0.2, update the managed files first (see [Transparent workspace and motion](#transparent-workspace-and-motion)). Google now uses official Antigravity ACP and requires its own one-time `ph login gemini`, even if the older Gemini CLI was logged in. After that, in an ordinary shell, run:
-
-```sh
-ph doctor
-ph open /path/to/your/project
-```
-
-Use an actual project directory. For a safe first exercise, follow [Your first task](#your-first-task-about-10-minutes). Avoid starting in your entire home directory: start in the folder containing the work you want the AI to access.
-
-`ph open .` uses your current directory. Running it again for the same project reattaches to its existing Zellij session. To use the agent without Zellij, run `ph agent .`; to use only the editor, run `ph-edit`.
-
-### Install on a new server
-
-The pinned bootstrap targets **Linux x86_64**, with Git, Python 3.12+, a POSIX shell, and internet access. It installs Node, Neovim, Zellij, search tools, a C compiler, and the pinned npm/Neovim dependencies in your user account. The default bootstrap does not need sudo.
-
-```sh
-git clone https://github.com/ts06068/personal-harness.git
-cd personal-harness
-sh scripts/bootstrap.sh
-```
-
-Downloads and parser compilation can take a while. Wait for the final `ph doctor` report. The bootstrap does not replace your shell startup files or your normal Neovim configuration.
-
-If your shell cannot find `ph`, use `~/.local/bin/ph` or enable the launcher directory for the current shell:
-
-```sh
-export PATH="$HOME/.local/bin:$PATH"
-ph doctor
-```
-
-To make that PATH change permanent, add the same export to your shell startup file if it is not already present (`~/.zshrc` for zsh, `~/.bashrc` for bash).
-
-### Terminal font setup
-
-Use **JetBrainsMono Nerd Font Mono** for the terminal. The `Nerd Font` variant includes the folder, file-type, Git, search, and status icons used by LazyVim. Ordinary JetBrains Mono or Fira Code does not include these extra icons. General emoji such as a smile or rocket use the operating system's emoji font as a fallback.
-
-**Install the font on the computer where you see the terminal window.** With SSH, VS Code Remote, WSL, or a container, installing a font only inside Ubuntu does not install it on your Windows/macOS/Linux desktop.
-
-**Windows quick install:** open **PowerShell on Windows**, outside your SSH session, and run:
+1. If WSL is not installed, run `wsl --install -d Ubuntu-24.04` in an administrator PowerShell. Restart Windows if requested, then open Ubuntu once to create your Linux username and password.
+2. In normal **Windows PowerShell**, download and run the installer:
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/ts06068/personal-harness/main/scripts/install-fonts-windows.ps1" -OutFile "$env:TEMP\ph-install-fonts.ps1"
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\ph-install-fonts.ps1"
+Invoke-WebRequest https://raw.githubusercontent.com/ts06068/personal-harness/v0.3.0/scripts/install-windows.ps1 -OutFile "$env:TEMP\ph-install.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\ph-install.ps1"
 ```
 
-The [installer](scripts/install-fonts-windows.ps1) verifies the manifest and all downloaded fonts, installs four font styles for your Windows user without administrator rights, and prints the settings to select. The execution-policy override applies only to that PowerShell process. After it finishes, continue at **step 3** below and configure **both VS Code and Windows Terminal** if you use both. Their terminal font settings are independent. The script does not overwrite either application's settings.
+3. Open **Windows Terminal → Personal Harness (WSL)**. Run the remaining commands in that Ubuntu tab. Use `-Distribution YOUR_DISTRO` with the installer if you already use another Ubuntu 24.04+ WSL2 distribution.
 
-Prefer a manual installation, or using another OS? Follow all steps below:
+The installer adds the terminal font and a profile with acrylic at 80% opacity. Reopen Windows Terminal if the new profile or icons do not appear. Your Linux server's logins are separate from your new WSL installation.
 
-1. On your **local computer**, download the official [JetBrainsMono Nerd Fonts 3.5.1 archive](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip) and extract it.
-2. Install these four files: `JetBrainsMonoNerdFontMono-Regular.ttf`, `JetBrainsMonoNerdFontMono-Bold.ttf`, `JetBrainsMonoNerdFontMono-Italic.ttf`, and `JetBrainsMonoNerdFontMono-BoldItalic.ttf`.
-   - **Windows:** select the four files in File Explorer, right-click, and choose **Install** (on Windows 11, this may be under **Show more options**).
-   - **macOS:** open the files in Font Book and choose **Install**.
-   - **Linux:** copy them into `~/.local/share/fonts/`, then run `fc-cache -f`. Install your distribution's emoji font too; on Ubuntu Desktop, `sudo apt install fonts-noto-color-emoji` provides it.
-3. Select the font in the application you actually use:
+### Linux
 
-| Local terminal | Setting |
-| --- | --- |
-| **VS Code integrated terminal** | Open Settings with `Ctrl+,` (`Cmd+,` on macOS), search `terminal.integrated.fontFamily`, and enter the value shown below |
-| **Windows Terminal** | Open Settings → your SSH/PowerShell profile → Appearance → Font face → **JetBrainsMono Nerd Font Mono**, then Save |
-| **iTerm2** | Settings → Profiles → Text → Font → **JetBrainsMono Nerd Font Mono** |
-| **Linux desktop terminal** | Preferences → your profile → custom font → **JetBrainsMono Nerd Font Mono** |
-
-For **VS Code**, use this value in the Terminal › Integrated: Font Family field:
-
-```text
-'JetBrainsMono Nerd Font Mono', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', monospace
-```
-
-Or merge [the JSON setting](config/terminal/vscode.settings.json) into your settings. Change the **terminal** font setting; the editor font setting alone may not change a terminal that already has its own font configured. Windows supplies Segoe UI Emoji; macOS supplies Apple Color Emoji.
-
-4. Restart the **local terminal application** after installing the fonts. Save your Neovim files and reopen the editor so the restored icon configuration loads. Detaching/reconnecting to Zellij preserves the old Neovim process; that alone does not reload its plugin settings.
-5. In the server shell, from this repository, run:
+On x86_64 Linux with Git and Python 3.12+:
 
 ```sh
-python3 scripts/check-icons.py
+curl -fsSL https://raw.githubusercontent.com/ts06068/personal-harness/v0.3.0/scripts/install.py -o /tmp/ph-install.py
+python3 /tmp/ph-install.py
 ```
 
-The first lines should show real folder/file/Git icons, separator shapes, emoji, and Korean text. If Nerd Font icons are boxes, the local font is missing or the terminal still has another font selected. If only emoji are boxes, check the local OS emoji fallback. This is a **visual check**: the script cannot tell how an SSH client's screen renders its output. Font matches printed at the end describe the computer running the script.
+### Install with npm instead
 
-For a Linux or macOS computer with this repository checked out, `python3 scripts/install-fonts.py` is an alternative to manually installing the files. It installs pinned fonts into the current user's font directory and verifies SHA-256 hashes from [config/fonts.json](config/fonts.json); Linux also gets Noto Color Emoji. You still need to select the font in the local terminal. The server bootstrap deliberately leaves local desktop font installation to this step.
+In **Linux or the WSL Ubuntu tab**, with Node 22.19+ installed:
 
-### Transparent workspace and motion
-
-The UI uses a monochrome palette, transparent terminal backgrounds and short status animations. Code syntax colors remain enabled. In the agent, use `/ui motion full`, `/ui motion reduced`, or `/ui motion off`. `full` is the default; `reduced` and `off` use static status indicators. Animations make no model calls and do not delay streamed answers.
-
-For **Windows Terminal**, open Settings → the profile you use for SSH → Appearance. Enable **acrylic material** and set **background opacity to 80%**. Alternatively, merge [this profile fragment](config/terminal/windows-terminal.profile.json) into that profile's JSON object. Do not replace your complete `settings.json`. Both the Windows setting and the transparent application theme are needed. VS Code's integrated terminal is a separate renderer; Windows Terminal's acrylic setting does not affect it.
-
-Zellij's top and bottom bars use a checksum-pinned local `zjstatus` 0.25.0 plugin. On its first launch, Zellij asks for ReadApplicationState, ChangeApplicationState and RunCommands permissions. That release requests all three even though this configuration has no command widget. The plugin is downloaded only by the installer, not from a floating `latest` URL during startup.
-
-To update an existing installation, run this from the repository:
+Use a Node version manager or a user-writable npm prefix so installation does not require `sudo`.
 
 ```sh
-task_data=$(python3 scripts/install_paths.py data)
-export PATH="$task_data/bin:$PATH"
-npm ci --ignore-scripts --no-audit --no-fund
-npm run build
-npm test
-python3 scripts/install-ui.py
-python3 scripts/install-google.py
-python3 scripts/install-launchers.py
+npm install -g https://github.com/ts06068/personal-harness/releases/download/v0.3.0/personal-harness-0.3.0.tgz
+ph setup
 ```
 
-New Zellij workspaces use the transparent bars. Existing sessions keep their layout and running programs. A live layout replacement is deliberately unavailable: Zellij can duplicate running panes when matching their commands. Finish work before closing an old workspace; do not kill it just to refresh its appearance. For agent changes, let the current turn finish, `/handoff`, `/quit`, then run `ph agent .` in the same pane. For editor changes, save your files, exit with `:wqa`, then run `ph-edit`. Reattaching alone keeps the old processes and their old configuration.
+This command installs the release package directly; `npm install -g personal-harness` is not available until the package is published to the npm registry. `ph setup --dry-run` previews workspace setup. If `ph` is not on PATH after setup, use `~/.local/bin/ph` or reopen your shell.
 
-### Log in once per account
+### Log in
 
-Run these commands in a shell, not inside Neovim or the agent prompt:
+Run these in an ordinary shell:
 
 ```sh
-ph login gpt
+ph login chatgpt
 ph login claude
 ph login gemini
 ```
 
-| Provider | Login choice |
-| --- | --- |
-| GPT | In Pi, run `/login`, choose **OpenAI Codex / ChatGPT**, complete browser authentication, then `/quit` |
-| Claude | Follow the official Claude subscription-account login flow |
-| Gemini | Follow the official **Antigravity ACP personal Google OAuth** link printed by `ph login gemini` |
-
-For a remote server, open the displayed authentication URL in your local browser. Google ACP prints a temporary loopback port: forward it using VS Code Ports or SSH, or paste the final localhost redirect URL into the waiting `ph login gemini` terminal if the browser cannot connect. Do not paste credentials into a project file or an AI conversation. API-key and Vertex login routes are not part of this setup.
-
-For a new installation, check each account's extra-usage, paid-credit, and auto-refill settings. After disabling additional charges, record your confirmation:
+Follow each browser login. On SSH, use the displayed forwarding or callback instructions. Check that extra usage, paid credits and auto-refill are off, then record your confirmation:
 
 ```sh
-ph billing confirm gpt --extra-usage-off
+ph billing confirm chatgpt --extra-usage-off
 ph billing confirm claude --extra-usage-off
 ph billing confirm gemini --extra-usage-off
 ph doctor
 ```
 
-These commands record your confirmation; they do not change or audit your account's billing settings. Existing installations retain their saved confirmation. A local credential marker also does not prove that a model request will succeed. See [verification](docs/VERIFICATION.md) for the actual validation boundary.
+For an existing installation, your saved logins and confirmations remain available. The old `gpt` command alias still works; use `chatgpt` for new commands.
+
+## Know which screen you are using
+
+| Tab | Use it for | Example |
+| --- | --- | --- |
+| `edit` | Neovim: edit code, notes and drafts | `:w` saves the file |
+| `agent` | Requests to the selected worker | `/switch chatgpt` |
+| `run` | Ordinary shell commands | `git diff` |
+
+Keep Zellij **locked** while typing in Neovim or the agent. Locked means Zellij shortcuts mostly pass through to the application; it does not lock your files.
 
 ## Your first task (about 10 minutes)
 
@@ -203,7 +117,7 @@ At the **agent prompt**, enter each line separately:
 /task new Turn my website notes into a short implementation plan
 /task add notes.md
 /task decision Keep the first version small; do not add dependencies yet
-/switch gpt
+/switch chatgpt
 ```
 
 Select an available model when the picker appears. Use the arrow keys and `Enter`; `Esc` cancels a picker. You can choose `/switch claude` or `/switch gemini` instead.
@@ -349,7 +263,7 @@ Closing the last Neovim window exits the editor, not the whole Zellij session. I
 
 The two `Space a ...` mappings only copy text. Switch to the agent and paste it yourself using your local terminal's paste shortcut. Clipboard transfer over SSH depends on your terminal's OSC52 support and permissions. If copying does not work, type `/task add notes.md` directly.
 
-The file picker usually uses the Git/project root. The file tree here is **Neo-tree**, even if the upstream LazyVim documentation shows another explorer. The UI uses LazyVim's native icons; complete [Terminal font setup](#terminal-font-setup) on your local computer to display them. A configured language server is needed for language-specific features such as “go to definition”; the bootstrap does not install every language server.
+The file picker usually uses the Git/project root. The file tree here is **Neo-tree**, even if the upstream LazyVim documentation shows another explorer. The UI uses LazyVim's native icons; complete [font setup](docs/INSTALLATION.md#terminal-fonts) on your local computer to display them. A configured language server is needed for language-specific features such as “go to definition”; the bootstrap does not install every language server.
 
 References: [Neovim quick reference](https://neovim.io/doc/user/quickref/), [LazyVim keymaps](https://www.lazyvim.org/keymaps).
 
@@ -359,8 +273,8 @@ Enter these at the **agent prompt**:
 
 | Command | Purpose |
 | --- | --- |
-| `/switch` | Pick GPT, Claude, or Gemini, then a model |
-| `/switch gpt` | Choose a GPT worker |
+| `/switch` | Pick a default or registered worker, then a model |
+| `/switch chatgpt` | Choose a ChatGPT worker |
 | `/switch claude` | Choose a Claude worker |
 | `/switch gemini` | Choose the official Antigravity ACP account-default worker |
 | `/review PROVIDER` | Start a fresh read-only review segment with the provider you choose |
@@ -388,12 +302,12 @@ The harness records the failure and pauses; it does not endlessly retry or selec
 
 1. Run `/task` and inspect the saved result and pending operations.
 2. Record anything important with `/task decision ...` and `/task next ...`.
-3. Run `/switch claude`, `/switch gemini`, or `/switch gpt` to choose an available worker.
+3. Run `/switch claude`, `/switch gemini`, or `/switch chatgpt` to choose an available worker.
 4. Send a new instruction, such as: “Continue from the saved handoff. Check the existing results before running anything again.”
 
 Switching passes a compact task packet: goal, approved decisions, selected file paths, changes, results, open warnings, and next steps. It does not copy the full conversation. Ask the current worker to **propose a checkpoint**, then use `/checkpoint` to inspect it. Pending proposals must be approved or rejected before switching. You can still record decisions manually with `/task decision` and `/task next`; conversation alone does not automatically become approved state.
 
-The harness adds at most 8 KiB of approved instructions and 16 KiB of handoff text. Oversized sections include a reference to the full task record. The model can use `read_task_artifact` to retrieve registered results in pages, including during read-only review. Raw results are kept privately; warning detection is heuristic, not proof that an analysis is correct. Open warnings from older operations remain in the handoff or its complete warning index until you explicitly record their resolution.
+Ask the worker to read the original saved result when a summary is insufficient. Record how you resolved warnings with `/task resolve OPERATION_ID your observation`.
 
 ### Apply project instructions once
 
@@ -402,7 +316,7 @@ The harness adds at most 8 KiB of approved instructions and 16 KiB of handoff te
 3. Run `/switch` to create a fresh segment with those instructions.
 4. If the file or an imported Gemini instruction changes, review it again. A changed approval pauses the next request.
 
-Project instructions are explicit for all three workers. Google runs in an empty private metadata directory with its native tools disabled; only the managed MCP tools access your project. It receives the approved packet instead of discovering project skills, hooks or rules itself. Its dedicated global profile rejects extra context and configuration. You can approve a `GEMINI.md` explicitly too; imported instruction files must stay inside the project. Pi skills, prompt templates and context files remain disabled. The official provider engines still control their internal prompts, retries and compaction.
+Approve only the instructions relevant to this project. Use `/instructions remove` to stop applying them.
 
 If an interrupted operation has an **unknown** outcome, switching is blocked until you inspect what actually happened. Then record that observation:
 
@@ -428,76 +342,58 @@ ph reconcile /path/to/project OPERATION_ID completed 'Observed output and exit s
 
 For writing, select the draft and sources. For programming, select the code and requirements. For research, select the approved plan and relevant results. A task does not need to involve code.
 
-## What runs underneath?
+## Add another worker
 
-| Worker | Connection |
-| --- | --- |
-| GPT | Pi's `openai-codex` subscription OAuth transport |
-| Claude | `pi-claude-bridge` and the official Claude Agent SDK/runtime |
-| Gemini | The harness's ACP adapter and Google's unmodified Antigravity ACP server 1.2.1 |
-
-Claude and Gemini retain their official internal execution engines. Model availability and limits depend on the account. A model appearing in a picker is not proof of access. Gemini's local `cli-default` entry is not a model ID or a quota promise.
-
-The launcher excludes alternative API keys and gateways, restricts supported providers, and avoids automatic paid fallback. Account extra-usage settings remain your responsibility. The pinned Google ACP consumer transport does not opt into extra-credit fallback; account-side settings still apply. Token counts or displayed API-equivalent costs do not directly report subscription quota or actual charges.
-
-Managed file tools restrict paths; review mode blocks managed writes and shell execution. **This is not an operating-system sandbox.** Approved shell commands and plugins run with your Unix user's permissions. Use a suitable project directory and keep private credentials and restricted data outside the material you give to a model. Remote model requests send the selected content to the provider.
-
-R/Quarto integration, literature tools, mail/calendar/Drive actions, and OMP migration are not implemented in this initial version.
-
-## Storage, updates, and development
-
-Fresh installations use:
-
-| Location | Contents |
-| --- | --- |
-| Your `personal-harness` clone | Source, pinned dependencies, and configuration templates |
-| `~/.local/bin/ph`, `~/.local/bin/ph-edit` | Launchers |
-| `~/.local/share/personal-harness/` | Runtimes, dedicated provider credentials, and managed settings |
-| `~/.local/state/personal-harness/` | Project locks, task state, sessions, usage, and full tool results |
-| `~/.config/personal-nvim/` | Isolated Neovim configuration |
-| `~/.local/share/personal-nvim/` | Neovim plugins and parsers |
-
-Upgrades reuse an existing `research-harness` account/state directory and `research-nvim` editor profile if the corresponding new directory does not exist. These are private storage locations, not commands or an old repository clone. This preserves existing logins and tasks. Advanced overrides are `PH_DATA_DIR` and `PH_STATE_DIR`; keep them consistent during install and execution.
-
-To rebuild from the repository directory after updating or moving the clone:
+List the enabled routes and Pi's built-in provider IDs:
 
 ```sh
-task_data=$(python3 scripts/install_paths.py data)
-export PATH="$task_data/bin:$PATH"
-npm ci --ignore-scripts --no-audit --no-fund
-npm run build
-npm test
-python3 scripts/install-ui.py
-python3 scripts/install-google.py
-python3 scripts/install-launchers.py
-ph doctor
+ph providers list
+ph providers catalog
 ```
 
-Save editor files and finish or cancel the current agent turn before restarting those applications. Already-running processes do not automatically load updated code. The launcher installer removes the old `rh`/`rh-edit` aliases that it previously created.
+For example, to use your own OpenRouter API account:
 
-`.gitignore` excludes credentials, local profiles, task/session output, logs, generated code, dependencies, and machine-specific verification reports. Commit source and lockfiles; keep account stores private. The sample CSV in `examples/smoke` is synthetic.
+```sh
+ph providers add openrouter --allow-paid-api
+ph login openrouter
+```
 
-To preview removing the launchers and editor configuration, run `python3 scripts/rollback.py`. Add `--apply` only after closing the harness. Rollback retains accounts, tasks, installed tools, and plugins.
+Restart the agent, then use `/switch openrouter` and choose a model. API routes can incur charges. They are only enabled when you register them; a rate limit never switches to one automatically.
 
-## Troubleshooting
+For a local model server, save a file such as `ollama.json` with your installed model ID:
 
-| Problem | What to do |
+```json
+{
+  "id": "ollama",
+  "label": "Ollama",
+  "billing": "local",
+  "baseUrl": "http://127.0.0.1:11434/v1",
+  "api": "openai-completions",
+  "models": [{ "id": "YOUR_INSTALLED_MODEL_ID" }]
+}
+```
+
+Start the model server in the same Linux/WSL environment, then register it:
+
+```sh
+ph providers add ./ollama.json
+```
+
+Restart the agent and use `/switch ollama`. Model names and tool support depend on your server. For hosted compatible endpoints and additional OAuth subscriptions, see the [provider guide](docs/PROVIDERS.md).
+
+Remove an added route with `ph providers remove PROVIDER_ID`. To adjust animation, use `/ui motion full`, `/ui motion reduced`, or `/ui motion off` in the agent.
+
+## When something goes wrong
+
+| Problem | Next step |
 | --- | --- |
-| `ph: command not found` | Run `~/.local/bin/ph` or add `~/.local/bin` to PATH |
-| I do not know which screen I am typing in | Shell commands go in `run`; `/task` and `/switch` go in `agent`; `:w` goes in Neovim |
-| Letters move the cursor instead of inserting text | You are in Neovim Normal mode; press `i` |
-| Editor shortcuts switch Zellij modes | Lock Zellij with `Ctrl+g` and try again |
-| No worker is selected | Use `/switch`, choose a model, then send your request |
-| Login succeeded but the agent does not see it | Finish the current turn, `/quit`, and start `ph agent .` again |
-| Google login worked in Gemini CLI but the harness asks again | Run `ph login gemini`: Antigravity ACP has a separate official credential store. Never copy OAuth tokens between clients |
-| Google reports `UNSUPPORTED_CLIENT` | Use the pinned Antigravity ACP integration in 0.2; older Gemini CLI account access is no longer accepted for this individual account |
-| Another harness writer is active | Reattach with `ph open .`; do not start a second `ph agent` for the same project or delete a live lock |
-| Switching is blocked by an unknown operation | Inspect the output/process, then use `/task reconcile` with the observed result |
-| Existing provider settings are rejected | Use a clean project or explicitly review the conflicting configuration; the harness does not silently merge alternate billing routes |
-| Clipboard transfer fails over SSH | Type the file path directly with `/task add`; check OSC52 support in your local terminal |
-| Folder/file icons appear as boxes | Install **JetBrainsMono Nerd Font Mono on your local computer**, select it in the terminal, and restart the local terminal application; see [Terminal font setup](#terminal-font-setup) |
-| Icons appear as letters such as `f`, `E`, or `W` | Update and run `python3 scripts/install-launchers.py`, then save and restart Neovim with `ph-edit`; an existing editor can retain the old ASCII overrides |
-| File icons work but emoji are boxes | Check the local emoji fallback: Segoe UI Emoji (Windows), Apple Color Emoji (macOS), or Noto Color Emoji (Linux) |
-| Neovim offers to reload a file changed by the agent | Save your edits before handing the file to the agent; inspect the change before choosing which version to keep |
+| `ph` is not found | Use `~/.local/bin/ph`, or add `~/.local/bin` to PATH |
+| Typing moves the cursor | Press `i` to enter Neovim Insert mode |
+| Editor keys control Zellij | Press `Ctrl+g` to return to locked mode |
+| No worker is selected | Run `/switch` in the agent tab |
+| A provider reaches its limit | Inspect `/task`, then manually `/switch` to another registered worker |
+| A checkpoint is pending | Run `/checkpoint` and approve, edit or reject the proposal |
+| Icons are boxes | Select JetBrainsMono Nerd Font Mono in the local terminal; see [font setup](docs/INSTALLATION.md#terminal-fonts) |
+| Windows installation stops at WSL setup | Finish the requested restart and Ubuntu user setup, then rerun the installer |
 
-See [verification and limitations](docs/VERIFICATION.md), [implementation plan](PLAN.md), and [upstream sources](docs/SOURCES.md) for more detail.
+See [installation and updates](docs/INSTALLATION.md) for other setup options. Save files and finish or cancel active work before restarting the editor or agent; reconnecting to an existing Zellij session keeps its running programs.

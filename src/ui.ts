@@ -4,6 +4,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { configDir, privateDir } from "./paths.js";
 import { atomicJson, type TaskStore } from "./state.js";
+import { readProviders } from "./providers.js";
 
 export type Motion = "full" | "reduced" | "off";
 export function isMotion(text: string): text is Motion { return ["full", "reduced", "off"].includes(text); }
@@ -57,7 +58,8 @@ export class HarnessUI {
         const native = footer.getExtensionStatuses().get("ph-tool");
         const status = `${spinner} ${this.busy ? native || this.activity : this.activity}${elapsed}`;
         const warnings = this.store.openWarnings().length;
-        const line = `${this.review() ? "REVIEW" : "WORK"}  ${model}  |  ${status}  |  context ${gauge === undefined ? "unknown" : `${Math.round(gauge)}%`}  |  pending ${this.store.unresolved().length} · warnings ${warnings}`;
+        const billing = readProviders().find(p => p.id === provider)?.billing;
+        const line = `${this.review() ? "REVIEW" : "WORK"}${billing ? ` [${billing.toUpperCase()}]` : ""}  ${model}  |  ${status}  |  context ${gauge === undefined ? "unknown" : `${Math.round(gauge)}%`}  |  pending ${this.store.unresolved().length} · warnings ${warnings}`;
         return [truncateToWidth(theme.fg(this.store.task.status === "rate_limited" ? "warning" : "muted", line), width)];
       } };
     });

@@ -3,10 +3,12 @@ from pathlib import Path
 import os
 import sys
 
+INSTALL_HOME = Path(os.environ.get('PH_INSTALL_HOME') or Path.home()).resolve()
+
 
 def persistent_root(kind):
-    current = Path.home() / f'.local/{kind}/personal-harness'
-    previous = Path.home() / f'.local/{kind}/research-harness'
+    current = INSTALL_HOME / f'.local/{kind}/personal-harness'
+    previous = INSTALL_HOME / f'.local/{kind}/research-harness'
     return previous if previous.exists() and not current.exists() else current
 
 
@@ -14,8 +16,8 @@ DATA_ROOT = Path(os.environ.get('PH_DATA_DIR') or persistent_root('share'))
 STATE_ROOT = Path(os.environ.get('PH_STATE_DIR') or persistent_root('state'))
 NVIM_APPNAME = (
     'research-nvim'
-    if (Path.home() / '.config/research-nvim').exists()
-    and not (Path.home() / '.config/personal-nvim').exists()
+    if (INSTALL_HOME / '.config/research-nvim').exists()
+    and not (INSTALL_HOME / '.config/personal-nvim').exists()
     else 'personal-nvim'
 )
 

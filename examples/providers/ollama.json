@@ -1,0 +1,8 @@
+{
+  "id": "ollama",
+  "label": "Ollama",
+  "billing": "local",
+  "baseUrl": "http://127.0.0.1:11434/v1",
+  "api": "openai-completions",
+  "models": [{ "id": "replace-with-your-installed-model", "contextWindow": 32768, "maxTokens": 4096 }]
+}

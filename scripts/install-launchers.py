@@ -6,7 +6,7 @@ import json
 import re
 import shlex
 import shutil
-from install_paths import DATA_ROOT, NVIM_APPNAME
+from install_paths import DATA_ROOT, STATE_ROOT, INSTALL_HOME, NVIM_APPNAME
 
 repo = Path(__file__).resolve().parents[1]
 root = DATA_ROOT
@@ -24,15 +24,16 @@ def owned_write(path, text):
     if str(path) not in manifest['created']: manifest['created'].append(str(path))
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
 
-launcher = '#!/bin/sh\nexec ' + shlex.quote(str(bin_dir / 'node')) + ' ' + shlex.quote(str(repo / 'dist/cli.js')) + ' "$@"\n'
-editor = '#!/bin/sh\nexport NVIM_APPNAME=' + shlex.quote(NVIM_APPNAME) + '\nexport PATH=' + shlex.quote(str(bin_dir)) + ':"$PATH"\nexport CC=' + shlex.quote(str(bin_dir / 'cc')) + '\nexec ' + shlex.quote(str(bin_dir / 'nvim')) + ' "$@"\n'
+environment = ''.join('export ' + name + '=' + shlex.quote(str(value)) + '\n' for name, value in [('PH_INSTALL_HOME', INSTALL_HOME), ('PH_DATA_DIR', DATA_ROOT), ('PH_STATE_DIR', STATE_ROOT)])
+launcher = '#!/bin/sh\n' + environment + 'exec ' + shlex.quote(str(bin_dir / 'node')) + ' ' + shlex.quote(str(repo / 'dist/cli.js')) + ' "$@"\n'
+editor = '#!/bin/sh\n' + environment + ''.join('export ' + name + '=' + shlex.quote(str(INSTALL_HOME / path)) + '\n' for name, path in [('XDG_DATA_HOME', '.local/share'), ('XDG_STATE_HOME', '.local/state'), ('XDG_CACHE_HOME', '.cache')]) + 'export XDG_CONFIG_HOME=' + shlex.quote(str(INSTALL_HOME / '.config')) + '\nexport NVIM_APPNAME=' + shlex.quote(NVIM_APPNAME) + '\nexport PATH=' + shlex.quote(str(bin_dir)) + ':"$PATH"\nexport CC=' + shlex.quote(str(bin_dir / 'cc')) + '\nexec ' + shlex.quote(str(bin_dir / 'nvim')) + ' "$@"\n'
 for name in ['ph', 'ph-edit']:
     owned_write(bin_dir / name, editor if name.endswith('-edit') else launcher)
     (bin_dir / name).chmod(0o755)
-    dest = Path.home() / '.local/bin' / name
+    dest = INSTALL_HOME / '.local/bin' / name
     owned_write(dest, '#!/bin/sh\nexec ' + shlex.quote(str(bin_dir / name)) + ' "$@"\n')
     dest.chmod(0o755)
-editor_config = Path.home() / '.config' / NVIM_APPNAME
+editor_config = INSTALL_HOME / '.config' / NVIM_APPNAME
 owned_write(editor_config / 'init.lua', (repo / 'config/nvim/init.lua').read_text())
 for source in (repo / 'config/nvim/lua').rglob('*.lua'):
     owned_write(editor_config / 'lua' / source.relative_to(repo / 'config/nvim/lua'), source.read_text())
@@ -40,13 +41,13 @@ if (repo / 'config/nvim/lazy-lock.json').exists():
     owned_write(editor_config / 'lazy-lock.json', (repo / 'config/nvim/lazy-lock.json').read_text())
 # Preserve key bindings in a harness-specific copy. Set this only in the file:
 # Zellij 0.45.1's CLI boolean merge uses XOR, so also passing true toggles it off.
-zellij_source = Path.home() / '.config/zellij/config.kdl'
+zellij_source = INSTALL_HOME / '.config/zellij/config.kdl'
 zellij_config = zellij_source.read_text() if zellij_source.exists() else ''
 zellij_config = re.sub(r'(?m)^\s*simplified_ui\s+(?:true|false)[^\n]*$', '', zellij_config)
 zellij_config = re.sub(r'(?m)^\s*pane_frames\s+(?:true|false)[^\n]*$', '', zellij_config)
 owned_write(root / 'config/zellij.kdl', zellij_config.rstrip() + '\n\nsimplified_ui false\npane_frames false\n')
 # Retire only aliases recorded as ours, without deleting an unrelated command.
-for directory in [bin_dir, Path.home() / '.local/bin']:
+for directory in [bin_dir, INSTALL_HOME / '.local/bin']:
     for name in ['rh', 'rh-edit']:
         alias = directory / name
         if str(alias) in manifest['created']:

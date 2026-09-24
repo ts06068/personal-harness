@@ -12,7 +12,7 @@ test("real Pi runtime reloads the harness and starts fresh worker/review session
   // Fixture attestation applies only to this temporary profile. No credentials, no model request.
   writeFileSync(join(data, "config/billing.json"), JSON.stringify({ "gemini-cli-acp": { extraUsageDisabled: true } }));
   const project = join(root, "project"); mkdirSync(project);
-  const child = spawn(process.execPath, [resolve("dist/cli.js"), "agent", project, "--rpc"], {
+  const child = spawn(process.execPath, [process.env.PH_TEST_CLI || resolve("dist/cli.js"), "agent", project, "--rpc"], {
     env: { ...process.env, PH_DATA_DIR: data, PH_STATE_DIR: join(root, "state") }, stdio: "pipe",
   });
   let seq = 0; const pending = new Map<string, { resolve: (x: any) => void; reject: (error: Error) => void }>(); const errors: string[] = [];

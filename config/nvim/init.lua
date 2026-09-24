@@ -6,11 +6,21 @@ end
 vim.opt.rtp:prepend(lazypath)
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
+local treesitter = {
+  "nvim-treesitter/nvim-treesitter",
+  opts = { ensure_installed = { "bash", "json", "lua", "markdown", "markdown_inline", "python", "query", "vim", "vimdoc" } },
+}
+if vim.env.PH_SETUP_EDITOR == "1" then
+  -- The installer restores plugins first, then explicitly waits for parsers.
+  -- Background builds must not outlive one headless process and race the next.
+  treesitter.build = false
+  treesitter.opts = function(_, opts) opts.ensure_installed = {} end
+end
 require("lazy").setup({
   spec = {
     { "LazyVim/LazyVim", commit = "999700997f72227187d49d8b92667183dc7fc809", import = "lazyvim.plugins" },
     { import = "lazyvim.plugins.extras.editor.neo-tree" },
-    { "nvim-treesitter/nvim-treesitter", opts = { ensure_installed = { "bash", "json", "lua", "markdown", "markdown_inline", "python", "query", "vim", "vimdoc" } } },
+    treesitter,
     { "mason-org/mason.nvim", opts = { ensure_installed = {} } },
     { import = "plugins.personal-ui" },
   },

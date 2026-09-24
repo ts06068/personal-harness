@@ -1,14 +1,11 @@
 import { closeSync, constants, existsSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { homedir } from "node:os";
+import { DEFAULT_PROVIDERS, DEFAULT_LABELS, enabledProviders, readProviders } from "./providers.js";
 
-export const PROVIDERS = ["openai-codex", "claude-bridge", "gemini-cli-acp"] as const;
-export type Provider = typeof PROVIDERS[number];
-export const PROVIDER_LABELS: Record<Provider, string> = {
-  "openai-codex": "GPT (ChatGPT subscription)",
-  "claude-bridge": "Claude (Claude subscription)",
-  "gemini-cli-acp": "Gemini (Google subscription)",
-};
+export const PROVIDERS = DEFAULT_PROVIDERS;
+export type Provider = string;
+export const PROVIDER_LABELS = DEFAULT_LABELS;
 
 // Values are never printed. The launcher excludes alternate billing credentials.
 const BILLING_ENV = /^(OPENAI_API_KEY|CODEX_API_KEY|OPENAI_BASE_URL|OPENAI_API_BASE|ANTHROPIC_API_KEY|ANTHROPIC_AUTH_TOKEN|ANTHROPIC_OAUTH_TOKEN|ANTHROPIC_BASE_URL|ANTHROPIC_CUSTOM_HEADERS|CLAUDE_CODE_OAUTH_TOKEN|CLAUDE_CODE_USE_(BEDROCK|VERTEX|FOUNDRY)|GEMINI_API_KEY|GEMINI_API_BASE_URL|GOOGLE_GEMINI_BASE_URL|GOOGLE_VERTEX_BASE_URL|GOOGLE_API_KEY|GOOGLE_CLOUD_API_KEY|GOOGLE_APPLICATION_CREDENTIALS|GOOGLE_GENAI_USE_VERTEXAI|GOOGLE_CLOUD_PROJECT(_ID)?|GCLOUD_PROJECT|AZURE_OPENAI_.*|OPENROUTER_API_KEY|AI_GATEWAY_API_KEY|AGY_ACP_CCPA_BASE_URL|ANTIGRAVITY_HARNESS_PATH)$/;
@@ -22,29 +19,34 @@ export function billingEnvNames(env: NodeJS.ProcessEnv = process.env): string[] 
 }
 
 export function isProvider(value: string): value is Provider {
-  return (PROVIDERS as readonly string[]).includes(value);
+  return enabledProviders().includes(value);
 }
 
 export function assertProvider(provider: string): asserts provider is Provider {
-  if (!isProvider(provider)) throw new Error(`Subscription-only policy: provider ${provider} is not enabled.`);
+  if (!isProvider(provider)) throw new Error(`Provider ${provider} is not enabled. Register it explicitly with ph providers add; there is no automatic fallback.`);
 }
 
 export function assertRoute(model: { provider: string; api?: string; baseUrl?: string }): void {
   assertProvider(model.provider);
   if (model.provider === "openai-codex") {
-    if (!model.api?.includes("codex")) throw new Error("GPT must use the Codex subscription transport.");
+    if (!model.api?.includes("codex")) throw new Error("ChatGPT must use the Codex subscription transport.");
     const url = new URL(model.baseUrl || "https://chatgpt.com/backend-api/codex");
     if (url.protocol !== "https:" || url.hostname !== "chatgpt.com") {
-      throw new Error("Custom GPT gateway rejected by subscription-only policy.");
+      throw new Error("Custom ChatGPT gateway rejected by subscription-only policy.");
     }
   }
+  const extra = readProviders().find(p => p.id === model.provider);
+  if (extra?.baseUrl && (model.baseUrl?.replace(/\/$/, "") !== extra.baseUrl.replace(/\/$/, "") || model.api !== extra.api)) throw new Error("Model route differs from the explicitly registered endpoint.");
 }
 
 export function assertPrivateAuthStore(path: string): void {
   if (!existsSync(path)) return;
   const entries = JSON.parse(readFileSync(path, "utf8")) as Record<string, { type?: string }>;
+  const extras = readProviders();
   for (const [name, value] of Object.entries(entries)) {
-    if (name !== "openai-codex" || value?.type !== "oauth") {
+    const extra = extras.find(p => p.id === name);
+    const permitted = name === "openai-codex" ? value?.type === "oauth" : extra && (extra.billing === "subscription" ? value?.type === "oauth" : ["api_key", "oauth"].includes(value?.type || ""));
+    if (!permitted) {
       throw new Error(`Unexpected credential route in dedicated Pi profile: ${name}. Use ph login.`);
     }
   }
