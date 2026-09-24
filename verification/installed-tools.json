@@ -1,0 +1,47 @@
+{
+  "verified_date": "2026-09-24",
+  "platform": "linux-x86_64",
+  "tools": [
+    {
+      "name": "fd",
+      "version": "10.5.0",
+      "url": "https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "761c72dc8e120d85b22292063be8a796e2eeb20eb3e4f38b8fa2343ccf3514a7"
+    },
+    {
+      "name": "neovim",
+      "version": "0.11.6",
+      "url": "https://github.com/neovim/neovim/releases/download/v0.11.6/nvim-linux-x86_64.tar.gz",
+      "sha256": "2fc90b962327f73a78afbfb8203fd19db8db9cdf4ee5e2bef84704339add89cc"
+    },
+    {
+      "name": "node",
+      "version": "22.22.1",
+      "url": "https://nodejs.org/dist/v22.22.1/node-v22.22.1-linux-x64.tar.xz",
+      "sha256": "9a6bc82f9b491279147219f6a18add1e18424dce90d41d2a5fcd69d4924ba3aa"
+    },
+    {
+      "name": "ripgrep",
+      "version": "15.1.0",
+      "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.1.0/ripgrep-15.1.0-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "1c9297be4a084eea7ecaedf93eb03d058d6faae29bbc57ecdaf5063921491599"
+    },
+    {
+      "url": "https://github.com/tree-sitter/tree-sitter/releases/download/v0.27.0/tree-sitter-linux-x64.gz",
+      "version": "0.27.0",
+      "sha256": "20a1f39ec1c45f2211492dcb8881c802b643b554bb196869a29ac3778277fa77"
+    },
+    {
+      "name": "zellij",
+      "version": "0.45.1",
+      "url": "https://github.com/zellij-org/zellij/releases/download/v0.45.1/zellij-no-web-x86_64-unknown-linux-musl.tar.gz",
+      "sha256": "d7bda1e18c30a688833ae7627f1d6a253bbba5349a4bc48e4f0ec008aaf75ed1"
+    },
+    {
+      "name": "zig",
+      "version": "0.15.2",
+      "url": "https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz",
+      "sha256": "02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239"
+    }
+  ]
+}
