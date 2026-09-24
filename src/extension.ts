@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import type { Model } from "@earendil-works/pi-ai";
@@ -12,8 +12,9 @@ import { Instructions, decideCheckpoint, pendingCheckpoints, usageReport } from 
 import { artifactParams, checkpointParams, callTaskTool, taskTools } from "./task-tools.js";
 import { resultEnvelope, RESULT_BYTES, excerpt, HANDOFF_BYTES } from "./artifacts.js";
 import { contextPercent, HarnessUI, isMotion } from "./ui.js";
+import { createManagedShell } from "./shell.js";
 
-export default function extension(pi: ExtensionAPI): void {
+export default async function extension(pi: ExtensionAPI): Promise<void> {
   if (process.env.PH_LAUNCHED !== "1") throw new Error("Start this extension with ph agent <project>.");
   const store = new TaskStore(projectPath(process.cwd()));
   let current: ExtensionContext | undefined;
@@ -24,6 +25,9 @@ export default function extension(pi: ExtensionAPI): void {
   const instructions = new Instructions(store.project, store.dir, geminiHome);
   const visual = new HarnessUI(store, () => review);
   const results = new Map<string, string>();
+  const approvedTools = new Set<string>();
+  const shell = await createManagedShell(store);
+  pi.registerTool(shell.definition);
   let contextAlert = 0;
   const gemini = registerGemini(pi, store, () => current, () => review);
   const notify = (ctx: ExtensionContext, text: string, error = false) => ctx.ui.notify(text, error ? "error" : "info");
@@ -31,6 +35,7 @@ export default function extension(pi: ExtensionAPI): void {
     assertManagedProject(store.project);
     assertPrivateAuthStore(join(profileDir, "auth.json"));
     instructions.assertCurrent();
+    if (store.task.operations.some(op => op.status === "unknown")) throw new Error("Task needs reconciliation. Inspect /task and observed effects, then use /task reconcile before continuing.");
     if (!ctx.model) throw new Error("Choose a primary worker with /switch.");
     assertRoute(ctx.model);
     if (!billingConfirmed(ctx.model.provider as Provider)) throw new Error(`Confirm extra usage is disabled in your account, then run: ph billing confirm ${ctx.model.provider} --extra-usage-off`);
@@ -74,7 +79,7 @@ export default function extension(pi: ExtensionAPI): void {
         const preview = instructions.preview(path);
         if (await ctx.ui.confirm(`Approve instructions: ${preview.path}`, preview.content)) instructions.approve(preview);
       }
-      packetPending = true; gemini.reset(); selected = undefined;
+      packetPending = true; await gemini.reset(); selected = undefined;
       notify(ctx, "Instruction approval updated. Use /switch to start a fresh session with the selected instructions.");
     } catch (error) { notify(ctx, String(error), true); }
   } });
@@ -103,7 +108,7 @@ export default function extension(pi: ExtensionAPI): void {
       const choice = models.length === 1 ? models[0]!.id : await ctx.ui.select("Select model (availability requires account verification)", models.map(model => model.id));
       const model = models.find(model => model.id === choice); if (!model) return;
       assertRoute(model);
-      store.checkpoint("paused"); gemini.reset(); changing = true;
+      store.checkpoint("paused"); await gemini.reset(); changing = true;
       store.task.nextSegment = { provider, model: model.id, review: readonly }; store.save();
       // Pi 0.87 recreates extensions on replacement. The new extension instance
       // consumes the intent in session_start using its fresh ExtensionAPI.
@@ -121,7 +126,7 @@ export default function extension(pi: ExtensionAPI): void {
       if (!ctx.isIdle()) throw new Error("Wait for the active turn to settle before changing task state.");
       const match = /^(\S+)(?:\s+([\s\S]*))?$/.exec(args.trim());
       const command = match?.[1]; const text = match?.[2] || ""; const parts = text.split(/\s+/);
-      if (command === "new" && text) { store.newTask(text); selected = undefined; gemini.reset(); }
+      if (command === "new" && text) { store.newTask(text); selected = undefined; await gemini.reset(); }
       else if (command === "goal" && text) store.task.goal = text;
       else if (command === "next" && text) store.task.nextSteps = [text];
       else if (command === "decision" && text) store.task.decisions.push(text);
@@ -162,7 +167,7 @@ export default function extension(pi: ExtensionAPI): void {
     }
     tools(); visual.attach(ctx); ctx.ui.setStatus("ph", selected ? `${review ? "REVIEW" : "WORK"} · ${providerLabel(store.task.provider || "")} · ${selected}` : `Choose /switch · ${readProviders().length ? "registered routes only" : "subscription only"}`);
   });
-  pi.on("model_select", (event, ctx) => { current = ctx; if (!changing && `${event.model.provider}/${event.model.id}` !== selected) { selected = undefined; gemini.reset(); notify(ctx, "Use /switch before sending input so the handoff starts a fresh session."); } });
+  pi.on("model_select", async (event, ctx) => { current = ctx; if (!changing && `${event.model.provider}/${event.model.id}` !== selected) { selected = undefined; await gemini.reset(); notify(ctx, "Use /switch before sending input so the handoff starts a fresh session."); } });
   pi.on("input", (_event, ctx) => { current = ctx; try { guard(ctx); return { action: "continue" }; } catch (error) { notify(ctx, String(error), true); return { action: "handled" }; } });
   pi.on("before_provider_request", (_event, ctx) => { try { guard(ctx); } catch (error) { ctx.abort(); notify(ctx, String(error), true); } });
   pi.on("before_agent_start", (event, ctx) => {
@@ -184,24 +189,32 @@ export default function extension(pi: ExtensionAPI): void {
       const input = event.input as Record<string, unknown>;
       if (typeof input.path === "string") input.path = confinedPath(store.project, input.path);
       if (event.toolName === "bash") {
-        if (!ctx.hasUI || !(await ctx.ui.confirm("Run command in project", String(input.command)))) throw new Error("Command declined.");
+        if (!ctx.hasUI || !(await ctx.ui.confirm("Run command in project", String(input.command), { signal: ctx.signal }))) throw new Error("Command declined.");
       }
+      ctx.signal?.throwIfAborted();
+      if (store.task.operations.some(op => op.status === "unknown")) throw new Error("Task needs reconciliation before execution.");
+      approvedTools.add(event.toolCallId);
       return undefined;
     } catch (error) { return { block: true, terminate: true, reason: String(error) }; }
   });
   pi.on("tool_execution_start", event => { store.beginOperation(event.toolCallId, event.toolName); visual.tool(event.toolName); });
   pi.on("tool_result", event => {
+    const captured = shell.result(event.toolCallId);
+    if (captured) return captured;
     if (["read_task_artifact", "propose_checkpoint"].includes(event.toolName)) return;
-    let text = event.content.filter(part => part.type === "text").map(part => part.text).join("\n");
-    const details = event.details as { fullOutputPath?: string } | undefined;
-    if (event.toolName === "bash" && details?.fullOutputPath && existsSync(details.fullOutputPath)) text = readFileSync(details.fullOutputPath, "utf8");
+    const text = event.content.filter(part => part.type === "text").map(part => part.text).join("\n");
     results.set(event.toolCallId, text);
     if (Buffer.byteLength(text) <= RESULT_BYTES) return;
     const artifact = store.artifact(text);
-    return { content: [{ type: "text" as const, text: resultEnvelope(text, artifact, event.isError) }, ...event.content.filter(part => part.type !== "text")], details: { artifactId: artifact }, isError: event.isError };
+    return { content: [{ type: "text" as const, text: resultEnvelope(text, artifact, event.isError ? "failed" : "completed") }, ...event.content.filter(part => part.type !== "text")], details: { artifactId: artifact }, isError: event.isError };
   });
-  pi.on("tool_execution_end", event => {
-    store.endOperation(event.toolCallId, event.isError, results.get(event.toolCallId) ?? JSON.stringify(event.result)); results.delete(event.toolCallId);
+  pi.on("tool_execution_end", (event, ctx) => {
+    const interrupted = event.isError && ctx.signal?.aborted && approvedTools.has(event.toolCallId) && ["write", "edit"].includes(event.toolName);
+    if (!shell.result(event.toolCallId)) store.endOperation(event.toolCallId, {
+      status: interrupted ? "unknown" : event.isError ? "failed" : "completed",
+      terminationReason: interrupted ? "cancelled" : event.toolName === "bash" ? "not_started" : undefined,
+    }, results.get(event.toolCallId) ?? JSON.stringify(event.result));
+    shell.forget(event.toolCallId); results.delete(event.toolCallId); approvedTools.delete(event.toolCallId);
   });
   pi.on("message_end", event => {
     const message = event.message;
@@ -211,6 +224,7 @@ export default function extension(pi: ExtensionAPI): void {
     if (message.provider === "gemini-cli-acp" && ["error", "aborted"].includes(message.stopReason)) selected = undefined;
     if (message.stopReason === "error") { store.task.error = message.errorMessage || "Provider error"; store.task.status = classifyFailure(store.task.error) === "rate_limit" ? "rate_limited" : "paused"; }
     if (message.stopReason === "aborted") { store.task.error = "Turn interrupted; inspect observed outputs before continuing."; store.task.status = "paused"; }
+    if (store.task.operations.some(op => op.status === "unknown")) store.task.status = "needs_reconciliation";
     if (message.provider !== "gemini-cli-acp") store.usage({ id: message.responseId || `${message.provider}:${message.timestamp}`, provider: message.provider, model: message.model, kind: message.usage.totalTokens > 0 ? "reported" : "unknown", input: message.usage.input, output: message.usage.output, cacheRead: message.usage.cacheRead, cacheWrite: message.usage.cacheWrite });
     store.save();
   });
@@ -227,5 +241,5 @@ export default function extension(pi: ExtensionAPI): void {
   pi.on("session_before_switch", (_event, ctx) => { if (!changing && !ctx.isIdle()) return { cancel: true }; });
   pi.on("session_before_compact", (_event, ctx) => { notify(ctx, "Use /handoff and /switch to start a compact segment without a summarization call."); return { cancel: true }; });
   pi.on("session_before_tree", () => ({ cancel: true }));
-  pi.on("session_shutdown", () => { visual.dispose(); gemini.reset(); store.checkpoint(); });
+  pi.on("session_shutdown", async () => { visual.dispose(); await gemini.reset(); store.checkpoint(); });
 }

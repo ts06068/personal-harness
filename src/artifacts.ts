@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { closeSync, existsSync, fstatSync, openSync, readSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { privateDir } from "./paths.js";
+import type { OperationCompletion } from "./state.js";
 
 export const RESULT_BYTES = 8 * 1024;
 export const HANDOFF_BYTES = 16 * 1024;
@@ -56,8 +57,9 @@ export function detectWarnings(text: string): string[] {
   }
   return [...warnings];
 }
-export function resultEnvelope(text: string, id: string, failed: boolean, warnings = detectWarnings(text)): string {
-  const heading = `Status: ${failed ? "failed" : "completed"}\nWarnings detected: ${warnings.length}\nFull result: read_task_artifact(artifact_id="${id}")\n`;
+export function resultEnvelope(text: string, id: string, status: OperationCompletion["status"], warnings = detectWarnings(text), outcome?: OperationCompletion): string {
+  const execution = outcome ? `Termination: ${outcome.terminationReason ?? "unrecorded"}; exit code: ${outcome.exitCode ?? "unknown"}\n${outcome.error ? `Error: ${excerpt(outcome.error, 600)}\n` : ""}` : "";
+  const heading = `Status: ${status}\n${execution}${status === "unknown" ? "Inspect partial effects and reconcile this operation before continuing.\n" : ""}Warnings detected: ${warnings.length}\nFull result: read_task_artifact(artifact_id="${id}")\n`;
   const warningText = excerpt(warnings.join("\n"), 2200);
   const prefix = heading + (warningText ? `Warning excerpts (heuristic):\n${warningText}\n` : "") + "Result excerpt:\n";
   const budget = RESULT_BYTES - Buffer.byteLength(prefix);

@@ -34,6 +34,8 @@ The supplied Terminal profile uses acrylic and 80% opacity. Existing SSH profile
 
 Save files and settle agent turns first. Rerun the release installer for a newer version, or install the new npm tarball and rerun `ph setup`. Existing Zellij sessions retain their running applications and layout; new workspaces use the new configuration. Reopen settled agents/editors to use the new code.
 
+Version 0.3.1 preserves the existing task schema, accounts and raw artifacts. It does not reinterpret old failed operations. New shell interruptions retain partial output and require reconciliation before further execution or worker changes; follow the README's interruption-recovery steps. Existing running agents keep their loaded code until restarted.
+
 From a source checkout, use `sh scripts/bootstrap.sh`; development checks remain `npm run build` and `npm test`. The publishable lockfile is `npm-shrinkwrap.json`, so npm consumers receive the pinned dependency tree as well.
 
 `python3 scripts/rollback.py` previews removal of the recorded launchers/editor configuration; `--apply` performs it. Account stores, tasks, tools and old app versions remain. Uninstalling the npm package alone does not remove that persistent state. Do not remove an app directory while its agent/editor is running.

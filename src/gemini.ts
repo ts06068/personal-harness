@@ -28,7 +28,15 @@ export function registerGemini(pi: ExtensionAPI, store: TaskStore, getContext: (
   let localTools: Awaited<ReturnType<typeof startGeminiTools>> | undefined;
   let activeSignal: AbortSignal | undefined;
   const instructions = new Instructions(store.project, store.dir, geminiHome);
-  const reset = () => { worker?.close(); localTools?.close(); localTools = undefined; worker = undefined; cursor = []; previousUsage = undefined; packetPending = true; delete store.task.contextGauge; };
+  let resetting = Promise.resolve();
+  const reset = () => {
+    const tools = localTools; const native = worker;
+    localTools = undefined; worker = undefined; activeSignal = undefined;
+    cursor = []; previousUsage = undefined; packetPending = true; delete store.task.contextGauge;
+    resetting = Promise.all([resetting, tools?.close()]).then(() => {});
+    native?.close();
+    return resetting;
+  };
   pi.registerProvider("gemini-cli-acp", {
     // Retain the provider/route IDs for existing task and billing records.
     name: "Google Antigravity subscription", api: "gemini-cli-acp", baseUrl: "gemini-cli-acp", apiKey: "local-cli-oauth",
@@ -61,7 +69,7 @@ export function registerGemini(pi: ExtensionAPI, store: TaskStore, getContext: (
                     let result = JSON.stringify(update.content ?? update.rawOutput ?? "Result available in Gemini session log.");
                     const ref = /Full result: read_task_artifact\(artifact_id="([a-f0-9]{64})"/.exec(result.replaceAll('\\"', '"'))?.[1];
                     if (ref) { const path = join(store.dir, "artifacts", store.task.id, `${ref}.txt`); if (existsSync(path)) result = readFileSync(path, "utf8"); }
-                    if (!localTools) store.endOperation(id, update.status === "failed", result);
+                    if (!localTools) store.endOperation(id, { status: update.status }, result);
                   }
                   getContext()?.ui.setStatus("ph-tool", `Gemini: ${update.status || "running"} ${"title" in update ? update.title || "" : ""}`);
                 } else if (update.sessionUpdate === "usage_update") {
@@ -75,6 +83,7 @@ export function registerGemini(pi: ExtensionAPI, store: TaskStore, getContext: (
             const { startGeminiTools } = await import("./gemini-tools.js");
             localTools = await startGeminiTools(store, { review: isReview(), instructions, signal: () => activeSignal,
               approve: async (command, signal) => { const ctx = getContext(); return !!ctx?.hasUI && !signal.aborted && ctx.ui.confirm("Run command in project", command, { signal }); },
+              interrupt: () => getContext()?.abort(),
               activity: name => getContext()?.ui.setStatus("ph-tool", `Gemini: ${name}`),
             });
             worker = makeWorker({ command: googleACP, args: ["--uid="], cwd: googleWorkspace(store.dir), env: { ...harnessEnv(isReview()), PH_TASK_DIR: store.dir, PH_TASK_ID: store.task.id, PH_REVIEW: isReview() ? "1" : "0" }, logDir: join(store.dir, "logs"), review: isReview(),
@@ -88,8 +97,8 @@ export function registerGemini(pi: ExtensionAPI, store: TaskStore, getContext: (
                 const text = existsSync(path) ? readFileSync(path, "utf8") : "";
                 const id = `terminal:${terminalId}`; store.beginOperation(id, "Gemini terminal");
                 const ref = store.artifact(text);
-                if (exitCode !== undefined && store.task.operations.find(op => op.id === id)?.status === "running") store.endOperation(id, exitCode !== 0, text, exitCode ?? undefined);
-                return (exitCode === undefined ? "Terminal is still running; output is partial.\n" : `Exit code: ${exitCode ?? "unknown (signal)"}\n`) + resultEnvelope(text, ref, exitCode !== undefined && exitCode !== 0);
+                if (exitCode !== undefined && store.task.operations.find(op => op.id === id)?.status === "running") store.endOperation(id, { status: exitCode === null ? "unknown" : exitCode === 0 ? "completed" : "failed", terminationReason: exitCode === null ? "interrupted" : "exit", exitCode: exitCode ?? undefined }, text);
+                return (exitCode === undefined ? "Terminal is still running; output is partial.\n" : `Exit code: ${exitCode ?? "unknown (signal)"}\n`) + resultEnvelope(text, ref, exitCode == null ? "unknown" : exitCode === 0 ? "completed" : "failed");
               },
               approve: async (title, detail, signal) => {
                 const ctx = getContext(); if (!ctx?.hasUI || signal?.aborted) return false;
@@ -101,6 +110,7 @@ export function registerGemini(pi: ExtensionAPI, store: TaskStore, getContext: (
           stream.push({ type: "text_start", contentIndex: 0, partial: message });
           activeSignal = options?.signal;
           const result = await worker.prompt(prompt.text, options?.signal);
+          await (result.stopReason === "cancelled" ? localTools?.close() : localTools?.settle());
           packetPending = false;
           cursor = hashes;
           await options?.onResponse?.({ status: 200, headers: {} }, model);
@@ -124,14 +134,14 @@ export function registerGemini(pi: ExtensionAPI, store: TaskStore, getContext: (
           }
           store.usage({ id: message.responseId!, provider: model.provider, model: store.task.observedModel || "unknown", kind: usage || quota?.token_count ? "reported" : "unknown", ...(usage || quota?.token_count ? { input: message.usage.input, output: message.usage.output } : {}) });
           message.stopReason = result.stopReason === "cancelled" ? "aborted" : result.stopReason === "max_tokens" ? "length" : "stop";
-          if (message.stopReason === "aborted") { stream.push({ type: "error", reason: "aborted", error: message }); reset(); }
+          if (message.stopReason === "aborted") { await reset(); stream.push({ type: "error", reason: "aborted", error: message }); }
           else {
             stream.push({ type: "text_end", contentIndex: 0, content: message.content[0]?.type === "text" ? message.content[0].text : "", partial: message });
             stream.push({ type: "done", reason: message.stopReason, message });
           }
         } catch (error) {
           message.stopReason = options?.signal?.aborted ? "aborted" : "error";
-          message.errorMessage = String(error); reset();
+          message.errorMessage = String(error); await reset();
           stream.push({ type: "error", reason: message.stopReason, error: message });
         }
       })();

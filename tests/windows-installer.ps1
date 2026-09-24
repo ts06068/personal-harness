@@ -1,6 +1,7 @@
 # Exercises PowerShell control flow with a mocked WSL executable. No WSL is installed.
 $ErrorActionPreference = 'Stop'
 $installer = Join-Path $PSScriptRoot '../scripts/install-windows.ps1'
+$releaseVersion = (Get-Content (Join-Path $PSScriptRoot '../package.json') -Raw | ConvertFrom-Json).version
 $tokens = $null; $errors = $null
 [void][Management.Automation.Language.Parser]::ParseFile($installer, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw ($errors | Out-String) }
@@ -35,7 +36,7 @@ try {
     New-Item -ItemType Directory -Path $testRoot | Out-Null
     $settings = Join-Path $testRoot 'settings.json'; Set-Content $settings 'EXISTING_USER_SETTINGS'
     & $installer
-    if ($global:PhInstallerTestDownloads.Count -ne 2 -or ($global:PhInstallerTestDownloads | Where-Object { $_ -notmatch '/v0\.3\.0/' })) { throw 'Font files did not come from the selected release.' }
+    if ($global:PhInstallerTestDownloads.Count -ne 2 -or ($global:PhInstallerTestDownloads | Where-Object { -not $_.Contains("/v$releaseVersion/") })) { throw 'Font files did not come from the selected release.' }
     $profileFile = Join-Path $testRoot 'Microsoft/Windows Terminal/Fragments/personal-harness/profiles.json'
     $profile = Get-Content $profileFile -Raw | ConvertFrom-Json
     if ($profile.profiles[0].commandline -ne 'wsl.exe --distribution Ubuntu-24.04 --cd ~') { throw 'Incorrect terminal profile command.' }

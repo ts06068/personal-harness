@@ -112,3 +112,31 @@ Validation: run regression tests, a real Pi request against a local compatible
 fixture, simulated 429 handling, production-only tarball installation outside
 the checkout and first editor startup. Test PowerShell parsing/control flow
 without claiming that mocked WSL commands are actual Windows execution.
+
+## Execution outcome hardening (version 0.3.1)
+
+- Use one managed bash implementation for Pi workers and the Gemini MCP bridge.
+  Capture stdout/stderr before Pi truncates or throws, and save the complete
+  UTF-8 result independently of its formatted error text.
+- Store an explicit completion state, termination reason and observed exit code.
+  Normal nonzero exits remain failed. Cancellation/timeout after execution starts
+  remains unknown until the user records observed reconciliation. Declined or
+  pre-execution calls must not create false uncertainty.
+- Finalize operations once. Late generic events cannot overwrite an unknown
+  outcome, its original artifact or an already completed sibling operation.
+- Stop new requests and worker/task changes while effects are unknown. Preserve
+  partial output and state across restart; retain the existing task schema and
+  reconciliation commands without reinterpreting historical failure records.
+- Await Gemini MCP's in-flight executions during cancellation, session changes
+  and shutdown, before declaring the model turn settled. Interrupt its native
+  turn when a managed tool becomes unknown so it cannot keep requesting tools.
+- Verify with real local commands and the Pi/MCP event paths, then use the three
+  existing subscriptions on disposable synthetic projects. Check large failed
+  output, partial writes, timeout, response-only cancellation and cross-provider
+  original-result review. Scope artifact-read assertions to the review segment.
+- Publish a new v0.3.1 tarball, checksum manifest and Linux/WSL installers after
+  validation. Preserve v0.3.0 assets, saved logins/tasks and active user sessions.
+  Keep README changes to installation and interruption-recovery guidance.
+
+Usage-efficiency benchmarking and additional domain tools remain separate work.
+Execution evidence and unverified platform limits are recorded in docs/VERIFICATION.md.

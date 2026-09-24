@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-VERSION = '0.3.0'
+VERSION = '0.3.1'
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--version', default=VERSION)
 parser.add_argument('--dry-run', action='store_true')

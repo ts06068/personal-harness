@@ -25,5 +25,5 @@ test("two Gemini turns stream into the correct Pi response and cumulative usage 
   assert.equal(a.content[0].text, "response-1"); assert.equal(b.content[0].text, "response-2");
   assert.equal(sent[1], "second request");
   const usage = readFileSync(join(store.dir, "usage.jsonl"), "utf8").trim().split("\n").map(JSON.parse);
-  assert.deepEqual(usage.map(row => row.input), [10, 10]); bridge.reset();
+  assert.deepEqual(usage.map(row => row.input), [10, 10]); await bridge.reset();
 });

@@ -1,6 +1,35 @@
 # Verification and limits
 
-Verified on Ubuntu 26.04, Linux x86_64, on **2026-09-25 (Asia/Seoul)**. Version 0.3 adds package/installer and provider-registration checks. The real subscription calls below were completed for version 0.2; they were not repeated merely for packaging. Authentication, inference, account billing, and Windows visual appearance are distinct checks.
+Verified on Ubuntu 26.04, Linux x86_64, on **2026-09-25 (Asia/Seoul)**. Version 0.3.1 adds failed/interrupted command checks, including real calls with all three subscriptions. Historical version 0.2 and 0.3 checks are labeled separately below. Authentication, inference, account billing, and Windows visual appearance are distinct checks.
+
+## Version 0.3.1 execution outcomes
+
+- The TypeScript build and **41 automated tests passed**. A shared managed bash implementation captures stdout/stderr bytes before Pi truncates results or converts failures into exceptions. Tests reconstruct the exact UTF-8 output through artifact pages on success and exit codes 1/7, including warnings in the middle of large output.
+- Cancellation and timeout after execution starts produce `unknown`, retain partial output, and block new execution, task replacement, `/switch` and `/review` until observed reconciliation. Rejected/pre-execution calls and known nonzero exits remain `failed`. Late events cannot replace finalized outcomes or artifacts; a completed concurrent command remains completed.
+- Real subprocess tests create a partial file before cancellation/timeout and confirm the final file is absent. Unknown state survives reopening the task store. A real Pi RPC process exercises the extension/event pipeline with only the model transport replaced by a deterministic fixture; the blocked follow-up makes no model request. MCP tests exercise the same commands and approval/cancellation paths.
+- Gemini teardown now waits for in-flight MCP executions to save partial output before publishing the final model event. A dedicated regression test cancels a running command through MCP shutdown and verifies its artifact is available when shutdown returns. An unknown tool outcome interrupts the native model turn.
+- Task schema version 2 is retained. Previously recorded failures are not guessed to be cancellations. Existing reconciliation commands remain valid.
+
+### Real subscription checks (version 0.3.1)
+
+Each worker corrected a synthetic Python function, ran the unchanged validation script, and proposed a checkpoint. It then ran a command that produced approximately 156 KB of output with a middle warning and exited with code 7. The saved artifact matched the full expected output exactly. Separate partial-write commands were cancelled and timed out; both preserved their warning/output and blocked switching/review until the test driver recorded the observed partial file, missing final file and terminated command. Cancelling a response without tools created no unresolved operation.
+
+| Worker | Observed model | Failed full log | Partial-write cancellation and timeout | Read-only reviewer |
+| --- | --- | --- | --- | --- |
+| ChatGPT | `gpt-6-sol` | Passed | Passed | Claude `claude-sonnet-4-6` |
+| Claude | `claude-sonnet-4-6` | Passed | Passed | Gemini `gemini-3.8-flash-high` |
+| Gemini via Antigravity ACP | `gemini-3.8-flash-high` | Passed | Passed | ChatGPT `gpt-6-sol` |
+
+Every reviewer retrieved the required original pages during the review segment and reported the designated failure warning, exit code 7 and `VALIDATION_OK=5`. The implementation file remained unchanged during review. These assertions check the fixture facts, not the general accuracy of model reviews.
+
+The first run passed ChatGPT and Claude and exposed a Gemini cancellation-order defect. After the MCP drain fix and the complete 41-test run, Gemini's full workflow was repeated successfully with ChatGPT review. The table combines those successful runs; it does not claim that all three were rerun after the Gemini-specific fix. The test driver also now approves one fixture checkpoint and rejects additional proposals, preserving the runtime's stale-proposal rejection policy.
+
+### Distribution checks (version 0.3.1)
+
+- The release tarball was installed outside the checkout using `scripts/install.py --archive ... --sha256 ... --skip-editor-plugins`. Setup and `ph doctor` passed with isolated launchers, configuration and state, reusing verified pinned tool binaries. Editor plugin restoration was deferred; this patch does not change editor configuration.
+- Four package-runtime checks passed against that installed CLI, including fresh Pi worker/review sessions and the loopback compatible-provider quota fixture. A task created by the published 0.3.0 package retained its ID, goal, approved decision and exact original artifact after installation. Its legacy failed operation stayed failed without an invented termination reason.
+- PowerShell 7.6.6 passed the installer-flow tests with mocked WSL/download commands, including failure paths and preservation of terminal settings. This is not Windows desktop, real WSL, font registration or Windows PowerShell 5.1 validation.
+- Package contents use the existing allowlist; no account credentials, task artifacts or private live-test logs are distributed. Version 0.3.0 assets remain unchanged. npm registry publication is separate from the versioned GitHub release.
 
 ## Version 0.3 distribution and provider checks
 
@@ -16,7 +45,7 @@ Windows support in this release means Windows x64 through WSL2 Ubuntu 24.04+. Na
 
 ## Automated and runtime checks
 
-- TypeScript compilation and **33 automated tests passed**. Tests cover dangling, cyclic and escaping symlinks; overlapping directory/Git worktree locks; orphan-worker leases; interrupted-operation reconciliation; v1 task migration; warning retention from the middle of large and older logs; and UTF-8 byte budgets and paging.
+- TypeScript compilation and **41 automated tests passed** in version 0.3.1. Tests cover dangling, cyclic and escaping symlinks; overlapping directory/Git worktree locks; orphan-worker leases; interrupted-operation reconciliation; v1 task migration; warning retention from the middle of large and older logs; and UTF-8 byte budgets and paging.
 - Instruction approvals bind exact contents and imported files. Checkpoint proposals remain pending until user approval; stale proposals are rejected. Cross-task artifact reads, malformed paging and unauthorized MCP requests are rejected.
 - The real loopback MCP implementation was tested for review restrictions, task isolation, full command output capture before compaction, failed exit status, and shared artifact/checkpoint tools. The native Google workspace stays empty of project context, and unmanaged global context is rejected.
 - Synthetic ACP tests exercise negotiation, permission requests, cancellation and a single surfaced quota error. Managed Google sessions advertise no native filesystem or terminal capabilities; unexpected native read/write/execute callbacks are rejected without side effects. Named harness MCP tools still work through the parent guard.
@@ -74,7 +103,7 @@ The opt-in live test consumes subscription allowance. After login and billing co
 node scripts/verify-live.mjs chatgpt claude gemini
 ```
 
-It creates a disposable project and isolated task state under the system temporary directory, prints each outcome, and writes a private report and RPC log there. It does not change account settings. Reports can contain prompts and tool outputs; keep them private. Repeat a manual `/switch` or `/review` on the same synthetic task to inspect cross-provider continuity. Use simulated quota failures rather than deliberately exhausting an account.
+It creates a disposable project and isolated task state under the system temporary directory, prints each outcome, and writes a private report and RPC log there. It does not change account settings. Reports can contain prompts and tool outputs; keep them private. It checks failed full logs, partial-write cancellation/timeout, reconciliation and original-result review. With multiple providers, the next provider performs the review; set `PH_LIVE_REVIEWER=chatgpt` (or `claude`/`gemini`) to choose a reviewer when testing one worker. Use simulated quota failures rather than deliberately exhausting an account.
 
 For an interactive check, open a disposable project with `ph open .`, visit each tab, edit and save a file, detach and reattach. Do not end an active working session merely to test restoration or refresh decorations. Machine-specific logs, state, screenshots and backups remain excluded from Git.
 

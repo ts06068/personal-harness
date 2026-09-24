@@ -33,7 +33,10 @@ test("interrupted operations require observed reconciliation, without replay", (
   const store = new TaskStore(project, dir); store.task.goal = "Inspect synthetic cohort"; store.beginOperation("run-1", "analysis");
   const resumed = new TaskStore(project, dir); resumed.recoverInterrupted();
   assert.equal(resumed.task.status, "needs_reconciliation"); assert.equal(resumed.task.operations[0]?.status, "unknown");
-  assert.throws(() => resumed.assertSwitchable()); resumed.endOperation("run-1", false, "Output inspected; exit 0"); resumed.assertSwitchable();
+  assert.throws(() => resumed.assertSwitchable());
+  resumed.endOperation("run-1", { status: "failed" }, "Late event must not resolve uncertainty");
+  assert.throws(() => resumed.assertSwitchable());
+  resumed.reconcile("run-1", false, "Output inspected; exit 0"); resumed.assertSwitchable();
   const old = resumed.task.id; resumed.newTask("Review figure"); assert.notEqual(resumed.task.id, old);
   assert.equal(JSON.parse(readFileSync(join(resumed.dir, "archive", `${old}.json`), "utf8")).goal, "Inspect synthetic cohort");
 });
@@ -56,6 +59,6 @@ test("usage deduplication and bounded handoff preserve full local outputs", () =
   const dir = mkdtempSync(join(tmpdir(), "ph-usage-")); const store = new TaskStore(dir, dir);
   const row = { id: "response-1", provider: "gemini-cli-acp", model: "default", kind: "unknown" as const };
   store.usage(row); store.usage(row); assert.equal(readFileSync(join(store.dir, "usage.jsonl"), "utf8").trim().split("\n").length, 1);
-  store.beginOperation("1", "analysis"); store.endOperation("1", true, "Warning: convergence failed\n" + "x".repeat(20000));
+  store.beginOperation("1", "analysis"); store.endOperation("1", { status: "failed" }, "Warning: convergence failed\n" + "x".repeat(20000));
   assert.ok(store.checkpoint().length < 16000); assert.match(readFileSync(join(store.dir, "events.jsonl"), "utf8"), /convergence failed/);
 });

@@ -30,8 +30,8 @@ test("dangling final/intermediate and cyclic symlinks cannot create files outsid
 test("warnings survive the middle of large logs, old operations and a bounded UTF-8 handoff", () => {
   const { store } = fixture();
   const text = "한글 결과\n".repeat(2500) + "WARNING: model did not converge\n" + "x".repeat(20000);
-  store.beginOperation("original", "analysis"); store.endOperation("original", true, text, 1);
-  for (let i = 0; i < 20; i++) { store.beginOperation(`later-${i}`, "read"); store.endOperation(`later-${i}`, false, "ok"); }
+  store.beginOperation("original", "analysis"); store.endOperation("original", { status: "failed", exitCode: 1 }, text);
+  for (let i = 0; i < 20; i++) { store.beginOperation(`later-${i}`, "read"); store.endOperation(`later-${i}`, { status: "completed" }, "ok"); }
   store.task.goal = "긴 목표".repeat(20000); store.task.decisions.push("긴 결정".repeat(20000));
   const handoff = store.checkpoint(); assert.ok(Buffer.byteLength(handoff) <= 16384); assert.match(handoff, /did not converge/);
   assert.equal(handoff.includes("�"), false);
@@ -44,7 +44,7 @@ test("warnings survive the middle of large logs, old operations and a bounded UT
 });
 test("result compaction retains warnings and an exact retrievable original", () => {
   const { store } = fixture(); const text = "x".repeat(30000) + "\nWARNING: hidden middle\n" + "y".repeat(30000) + "\nVALIDATION_OK";
-  const id = store.artifact(text); const result = resultEnvelope(text, id, false);
+  const id = store.artifact(text); const result = resultEnvelope(text, id, "completed");
   assert.ok(Buffer.byteLength(result) <= 8192); assert.match(result, /hidden middle/); assert.match(result, new RegExp(id));
   assert.ok(detectWarnings(text).some(w => w.includes("hidden middle")));
   assert.match(result, /VALIDATION_OK/);

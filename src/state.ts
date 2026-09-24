@@ -7,10 +7,17 @@ import { withinRoot, type Provider } from "./security.js";
 import { detectWarnings, excerpt, HANDOFF_BYTES, saveArtifact } from "./artifacts.js";
 
 export type Status = "idle" | "running" | "paused" | "rate_limited" | "needs_reconciliation" | "complete";
+export interface OperationCompletion {
+  status: "completed" | "failed" | "unknown";
+  terminationReason?: "exit" | "cancelled" | "timeout" | "not_started" | "launch_error" | "interrupted";
+  exitCode?: number;
+  error?: string;
+}
 export interface Operation {
   id: string; tool: string; startedAt: string; status: "running" | "completed" | "failed" | "unknown";
   summary?: string; artifactId?: string; warnings?: string[]; exitCode?: number;
   reconciliation?: { at: string; note: string }[]; warningsResolved?: { at: string; note: string };
+  terminationReason?: OperationCompletion["terminationReason"]; error?: string;
 }
 export interface Snapshot { at: string; head: string | null; status: string; diffStat: string }
 export interface Usage { id: string; provider: string; model: string; kind: "reported" | "estimated" | "unknown"; input?: number; output?: number; cacheRead?: number; cacheWrite?: number }
@@ -115,17 +122,18 @@ export class TaskStore {
     this.task.operations.push({ id, tool, summary, startedAt: new Date().toISOString(), status: "running" });
     this.save(); this.event("operation_start", { id, tool, summary });
   }
-  endOperation(id: string, failed = false, summary?: string, exitCode?: number): void {
+  endOperation(id: string, completion: OperationCompletion, summary?: string): void {
     const operation = this.task.operations.find(op => op.id === id);
-    if (operation) {
-      operation.status = failed ? "failed" : "completed";
-      if (summary !== undefined) {
-        operation.artifactId = this.artifact(summary); operation.summary = excerpt(summary, 2000);
-        operation.warnings = [...new Set([...(operation.warnings || []), ...detectWarnings(summary)])];
-      }
-      if (exitCode !== undefined) operation.exitCode = exitCode;
+    // Finalization has one owner. In particular, late Pi/MCP events must not
+    // turn an unknown outcome into a confirmed failure or replace its artifact.
+    if (!operation || operation.status !== "running") return;
+    Object.assign(operation, completion);
+    if (summary !== undefined) {
+      operation.artifactId = this.artifact(summary); operation.summary = excerpt(summary, 2000);
+      operation.warnings = [...new Set([...(operation.warnings || []), ...detectWarnings(summary)])];
     }
-    this.save(); this.event("operation_end", { id, failed, summary });
+    if (completion.status === "unknown") this.task.status = "needs_reconciliation";
+    this.save(); this.event("operation_end", { id, ...completion, summary });
   }
   reconcile(id: string, failed: boolean, note: string): void {
     const op = this.task.operations.find(item => item.id === id);
@@ -158,7 +166,7 @@ export function renderHandoff(task: Task): string {
   const warnings = task.operations.filter(op => op.warnings?.length && !op.warningsResolved);
   const warningCount = warnings.reduce((sum, op) => sum + op.warnings!.length, 0);
   const section = (name: string, text: string, bytes: number) => `\n## ${name}\n${excerpt(text || "None recorded.", bytes)}\n`;
-  const recent = task.operations.slice(-8).map(op => `${op.id} [${op.status}] ${op.tool}; exit=${op.exitCode ?? "unknown"}; result=${op.artifactId ?? "unavailable"}\n${excerpt(op.summary || "", 440)}`).join("\n");
+  const recent = task.operations.slice(-8).map(op => `${op.id} [${op.status}] ${op.tool}; reason=${op.terminationReason ?? "unrecorded"}; exit=${op.exitCode ?? "unknown"}; result=${op.artifactId ?? "unavailable"}\n${excerpt(op.error || op.summary || "", 440)}`).join("\n");
   const text = [
     "# Task handoff", `Task: ${task.id}`, `Project: ${excerpt(task.project, 600)}`, `Status: ${task.status}`,
     `Full state: ${task.references?.state || "unavailable"}; complete open-warning index: ${task.references?.warnings || "unavailable"}`,

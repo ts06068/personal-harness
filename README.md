@@ -23,7 +23,7 @@ Use **Windows Terminal + WSL2 Ubuntu on an x64 PC**. The workspace runs inside W
 2. In normal **Windows PowerShell**, download and run the installer:
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/ts06068/personal-harness/v0.3.0/scripts/install-windows.ps1 -OutFile "$env:TEMP\ph-install.ps1"
+Invoke-WebRequest https://raw.githubusercontent.com/ts06068/personal-harness/v0.3.1/scripts/install-windows.ps1 -OutFile "$env:TEMP\ph-install.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\ph-install.ps1"
 ```
 
@@ -36,7 +36,7 @@ The installer adds the terminal font and a profile with acrylic at 80% opacity. 
 On x86_64 Linux with Git and Python 3.12+:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ts06068/personal-harness/v0.3.0/scripts/install.py -o /tmp/ph-install.py
+curl -fsSL https://raw.githubusercontent.com/ts06068/personal-harness/v0.3.1/scripts/install.py -o /tmp/ph-install.py
 python3 /tmp/ph-install.py
 ```
 
@@ -47,7 +47,7 @@ In **Linux or the WSL Ubuntu tab**, with Node 22.19+ installed:
 Use a Node version manager or a user-writable npm prefix so installation does not require `sudo`.
 
 ```sh
-npm install -g https://github.com/ts06068/personal-harness/releases/download/v0.3.0/personal-harness-0.3.0.tgz
+npm install -g https://github.com/ts06068/personal-harness/releases/download/v0.3.1/personal-harness-0.3.1.tgz
 ph setup
 ```
 
@@ -383,7 +383,9 @@ Approve only the instructions relevant to this project. Use `/instructions remov
 
 ### Resolve interrupted operations
 
-If an interrupted operation has an **unknown** outcome, switching is blocked until you inspect what actually happened. `/task` shows its operation ID. Check the relevant files, logs or running job from the `run` tab, then record that observation:
+A command that exits with a nonzero code is recorded as **failed**. A command cancelled while running, including a timeout, is **unknown** until you check its effects. Both keep the full captured output for later review.
+
+If an operation has an **unknown** outcome, further execution and worker switching are blocked until you inspect what actually happened. `/task` shows its operation ID. Check the relevant files, logs or running job from the `run` tab, then record that observation:
 
 ```text
 /task reconcile OPERATION_ID completed Observed output file and successful exit status
