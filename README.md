@@ -6,7 +6,7 @@ You choose the worker. When a provider reaches its rate limit, the harness saves
 
 **The commands are `ph` and `ph-edit`.** The old `rh` commands have been removed.
 
-[Getting started](#getting-started) · [First task](#your-first-task-about-10-minutes) · [Zellij keys](#zellij-move-between-workspaces) · [Neovim keys](#neovim-edit-files) · [Model switching](#choose-and-switch-ai-workers) · [Troubleshooting](#troubleshooting)
+[Getting started](#getting-started) · [Terminal fonts](#terminal-font-setup) · [First task](#your-first-task-about-10-minutes) · [Zellij keys](#zellij-move-between-workspaces) · [Neovim keys](#neovim-edit-files) · [Model switching](#choose-and-switch-ai-workers) · [Troubleshooting](#troubleshooting)
 
 ## What is on the screen?
 
@@ -56,6 +56,56 @@ ph doctor
 ```
 
 To make that PATH change permanent, add the same export to your shell startup file if it is not already present (`~/.zshrc` for zsh, `~/.bashrc` for bash).
+
+### Terminal font setup
+
+Use **JetBrainsMono Nerd Font Mono** for the terminal. The `Nerd Font` variant includes the folder, file-type, Git, search, and status icons used by LazyVim. Ordinary JetBrains Mono or Fira Code does not include these extra icons. General emoji such as a smile or rocket use the operating system's emoji font as a fallback.
+
+**Install the font on the computer where you see the terminal window.** With SSH, VS Code Remote, WSL, or a container, installing a font only inside Ubuntu does not install it on your Windows/macOS/Linux desktop.
+
+**Windows quick install:** open **PowerShell on Windows**, outside your SSH session, and run:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/ts06068/personal-harness/main/scripts/install-fonts-windows.ps1" -OutFile "$env:TEMP\ph-install-fonts.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\ph-install-fonts.ps1"
+```
+
+The [installer](scripts/install-fonts-windows.ps1) verifies the manifest and all downloaded fonts, installs four font styles for your Windows user without administrator rights, and prints the settings to select. The execution-policy override applies only to that PowerShell process. After it finishes, continue at **step 3** below and configure **both VS Code and Windows Terminal** if you use both. Their terminal font settings are independent. The script does not overwrite either application's settings.
+
+Prefer a manual installation, or using another OS? Follow all steps below:
+
+1. On your **local computer**, download the official [JetBrainsMono Nerd Fonts 3.5.1 archive](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip) and extract it.
+2. Install these four files: `JetBrainsMonoNerdFontMono-Regular.ttf`, `JetBrainsMonoNerdFontMono-Bold.ttf`, `JetBrainsMonoNerdFontMono-Italic.ttf`, and `JetBrainsMonoNerdFontMono-BoldItalic.ttf`.
+   - **Windows:** select the four files in File Explorer, right-click, and choose **Install** (on Windows 11, this may be under **Show more options**).
+   - **macOS:** open the files in Font Book and choose **Install**.
+   - **Linux:** copy them into `~/.local/share/fonts/`, then run `fc-cache -f`. Install your distribution's emoji font too; on Ubuntu Desktop, `sudo apt install fonts-noto-color-emoji` provides it.
+3. Select the font in the application you actually use:
+
+| Local terminal | Setting |
+| --- | --- |
+| **VS Code integrated terminal** | Open Settings with `Ctrl+,` (`Cmd+,` on macOS), search `terminal.integrated.fontFamily`, and enter the value shown below |
+| **Windows Terminal** | Open Settings → your SSH/PowerShell profile → Appearance → Font face → **JetBrainsMono Nerd Font Mono**, then Save |
+| **iTerm2** | Settings → Profiles → Text → Font → **JetBrainsMono Nerd Font Mono** |
+| **Linux desktop terminal** | Preferences → your profile → custom font → **JetBrainsMono Nerd Font Mono** |
+
+For **VS Code**, use this value in the Terminal › Integrated: Font Family field:
+
+```text
+'JetBrainsMono Nerd Font Mono', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', monospace
+```
+
+Or merge [the JSON setting](config/terminal/vscode.settings.json) into your settings. Change the **terminal** font setting; the editor font setting alone may not change a terminal that already has its own font configured. Windows supplies Segoe UI Emoji; macOS supplies Apple Color Emoji.
+
+4. Restart the **local terminal application** after installing the fonts. Save your Neovim files and reopen the editor so the restored icon configuration loads. Detaching/reconnecting to Zellij preserves the old Neovim process; that alone does not reload its plugin settings.
+5. In the server shell, from this repository, run:
+
+```sh
+python3 scripts/check-icons.py
+```
+
+The first lines should show real folder/file/Git icons, separator shapes, emoji, and Korean text. If Nerd Font icons are boxes, the local font is missing or the terminal still has another font selected. If only emoji are boxes, check the local OS emoji fallback. This is a **visual check**: the script cannot tell how an SSH client's screen renders its output. Font matches printed at the end describe the computer running the script.
+
+For a Linux or macOS computer with this repository checked out, `python3 scripts/install-fonts.py` is an alternative to manually installing the files. It installs pinned fonts into the current user's font directory and verifies SHA-256 hashes from [config/fonts.json](config/fonts.json); Linux also gets Noto Color Emoji. You still need to select the font in the local terminal. The server bootstrap deliberately leaves local desktop font installation to this step.
 
 ### Log in once per account
 
@@ -276,7 +326,7 @@ Closing the last Neovim window exits the editor, not the whole Zellij session. I
 
 The two `Space a ...` mappings only copy text. Switch to the agent and paste it yourself using your local terminal's paste shortcut. Clipboard transfer over SSH depends on your terminal's OSC52 support and permissions. If copying does not work, type `/task add notes.md` directly.
 
-The file picker usually uses the Git/project root. The file tree here is **Neo-tree**, even if the upstream LazyVim documentation shows another explorer. The default UI uses ordinary text labels rather than requiring a Nerd Font. A configured language server is needed for language-specific features such as “go to definition”; the bootstrap does not install every language server.
+The file picker usually uses the Git/project root. The file tree here is **Neo-tree**, even if the upstream LazyVim documentation shows another explorer. The UI uses LazyVim's native icons; complete [Terminal font setup](#terminal-font-setup) on your local computer to display them. A configured language server is needed for language-specific features such as “go to definition”; the bootstrap does not install every language server.
 
 References: [Neovim quick reference](https://neovim.io/doc/user/quickref/), [LazyVim keymaps](https://www.lazyvim.org/keymaps).
 
@@ -403,7 +453,9 @@ To preview removing the launchers and editor configuration, run `python3 scripts
 | Switching is blocked by an unknown operation | Inspect the output/process, then use `/task reconcile` with the observed result |
 | Existing provider settings are rejected | Use a clean project or explicitly review the conflicting configuration; the harness does not silently merge alternate billing routes |
 | Clipboard transfer fails over SSH | Type the file path directly with `/task add`; check OSC52 support in your local terminal |
-| Icons still appear as boxes after an update | Save and restart Neovim; use the managed launcher and its plain-text UI configuration |
+| Folder/file icons appear as boxes | Install **JetBrainsMono Nerd Font Mono on your local computer**, select it in the terminal, and restart the local terminal application; see [Terminal font setup](#terminal-font-setup) |
+| Icons appear as letters such as `f`, `E`, or `W` | Update and run `python3 scripts/install-launchers.py`, then save and restart Neovim with `ph-edit`; an existing editor can retain the old ASCII overrides |
+| File icons work but emoji are boxes | Check the local emoji fallback: Segoe UI Emoji (Windows), Apple Color Emoji (macOS), or Noto Color Emoji (Linux) |
 | Neovim offers to reload a file changed by the agent | Save your edits before handing the file to the agent; inspect the change before choosing which version to keep |
 
 See [verification and limitations](docs/VERIFICATION.md), [implementation plan](PLAN.md), and [upstream sources](docs/SOURCES.md) for more detail.

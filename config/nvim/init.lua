@@ -17,15 +17,7 @@ require("lazy").setup({
   defaults = { lazy = false, version = false },
   checker = { enabled = false },
   change_detection = { notify = false },
-  ui = { icons = {
-    cmd = ":", config = "config", event = "event", ft = "ft", init = "init", keys = "keys",
-    plugin = "plugin", runtime = "runtime", require = "require", source = "source", start = ">",
-    debug = "debug", favorite = "*", import = "import",
-    task = "task", lazy = "lazy", list = { "-", ">", "*", "+" },
-    loaded = "+", not_loaded = "-",
-  } },
 })
-vim.opt.fillchars:append({ foldopen = "v", foldclose = ">", diff = "/" })
 vim.opt.clipboard = "unnamedplus"
 vim.keymap.set("n", "<leader>af", function()
   local text = "/task add " .. vim.fn.expand("%:p")

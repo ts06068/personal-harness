@@ -25,7 +25,13 @@ The actual runtime integration test covers this behavior without calling a model
 
 Terminal UI update (2026-09-24):
 
-- [mini.icons ASCII fallback](https://github.com/nvim-mini/mini.icons/blob/main/doc/mini-icons.txt): file icons without a Nerd Font.
+- [LazyVim requirements](https://www.lazyvim.org/): Nerd Fonts 3 or newer for icon display.
+- [Nerd Fonts 3.5.1](https://github.com/ryanoasis/nerd-fonts/releases/tag/v3.5.1): patched JetBrainsMono; regular, bold, italic, and bold-italic Mono files are pinned in `config/fonts.json`.
+- [Noto Emoji 2.051](https://github.com/googlefonts/noto-emoji/tree/v2.051): Linux color-emoji fallback.
+- [VS Code terminal appearance](https://code.visualstudio.com/docs/terminal/appearance): `terminal.integrated.fontFamily` accepts a CSS font family list.
+- [Windows Terminal appearance](https://learn.microsoft.com/en-us/windows/terminal/customize-settings/profile-appearance): terminal profile font selection.
 - [Zellij simplified UI](https://zellij.dev/documentation/options#simplified_ui): tab/status separators.
-- [Zellij 0.45.1 options](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/input/options.rs): `merge_from_cli` XORs duplicate booleans. Configure `simplified_ui true` in the file only.
+- [Zellij 0.45.1 options](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/input/options.rs): `merge_from_cli` XORs duplicate booleans. Configure `simplified_ui false` in the file only to retain icon separators.
 - Installed Gemini CLI 0.61.0 source, `OAuthCredentialStorage`/`FileKeychain`: Google OAuth can be stored as encrypted `gemini-credentials.json` or in a keychain. The old plaintext-file check is insufficient; the official ACP session owns authentication.
+
+- [Windows font registration](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-addfontresourceexw) and [font-change notification](https://learn.microsoft.com/en-us/windows/win32/gdi/wm-fontchange): native calls used by the per-user Windows font installer.
