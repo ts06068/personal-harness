@@ -43,7 +43,8 @@ if (repo / 'config/nvim/lazy-lock.json').exists():
 zellij_source = Path.home() / '.config/zellij/config.kdl'
 zellij_config = zellij_source.read_text() if zellij_source.exists() else ''
 zellij_config = re.sub(r'(?m)^\s*simplified_ui\s+(?:true|false)[^\n]*$', '', zellij_config)
-owned_write(root / 'config/zellij.kdl', zellij_config.rstrip() + '\n\nsimplified_ui false\n')
+zellij_config = re.sub(r'(?m)^\s*pane_frames\s+(?:true|false)[^\n]*$', '', zellij_config)
+owned_write(root / 'config/zellij.kdl', zellij_config.rstrip() + '\n\nsimplified_ui false\npane_frames false\n')
 # Retire only aliases recorded as ours, without deleting an unrelated command.
 for directory in [bin_dir, Path.home() / '.local/bin']:
     for name in ['rh', 'rh-edit']:

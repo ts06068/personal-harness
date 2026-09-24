@@ -31,6 +31,8 @@ credentials-*.json
 oauth_creds.json
 gemini-credentials.json
 google_accounts.json
+acp_token.json
+acp_business_token.json
 client_secret*.json
 application_default_credentials.json
 *.pem
@@ -47,6 +49,12 @@ application_default_credentials.json
 /logs/
 /artifacts/
 /backups/
+/ui-backups/
+/proposals/
+task-v1-*.json
+gemini-observed-model.json
+instructions.json
+*.wasm
 /verification/*
 !/verification/installed-tools.json
 

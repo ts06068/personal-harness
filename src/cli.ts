@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { spawn, execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { basename, join } from "node:path";
-import { billingConfirmed, claudeCLI, claudeHome, configure, confirmBilling, geminiCLI, geminiHome, harnessEnv, piCLI } from "./config.js";
+import { join } from "node:path";
+import { billingConfirmed, claudeCLI, claudeHome, configure, confirmBilling, googleACP, geminiHome, harnessEnv, piCLI } from "./config.js";
 import { binDir, configDir, profileDir, projectPath, repoRoot } from "./paths.js";
 import { assertManagedProject, assertPrivateAuthStore, assertProvider, billingEnvNames, PROVIDERS, type Provider } from "./security.js";
-import { acquireProjectLock, projectId, renderHandoff, TaskStore } from "./state.js";
+import { acquireProjectLock, renderHandoff, TaskStore } from "./state.js";
+import { workspaceName } from "./workspace-ui.js";
 
 const aliases: Record<string, Provider> = { gpt: "openai-codex", claude: "claude-bridge", gemini: "gemini-cli-acp" };
 function provider(value?: string): Provider { const p = aliases[value || ""] || value || ""; assertProvider(p); return p; }
@@ -26,23 +27,23 @@ function authStatus(): Record<string, boolean | null> {
   let gpt = false;
   const file = join(profileDir, "auth.json");
   if (existsSync(file)) { try { assertPrivateAuthStore(file); gpt = Boolean(JSON.parse(readFileSync(file, "utf8"))["openai-codex"]); } catch { /* doctor shows unverified */ } }
-  // File presence is only a local storage hint. Gemini can also use the OS
-  // keychain, so no file means unknown, not necessarily logged out.
-  const googleStore = ["oauth_creds.json", "gemini-credentials.json"].some(name => existsSync(join(geminiHome, ".gemini", name)));
+  // File presence is a local storage hint; only a live request validates auth.
+  const googleStore = existsSync(join(geminiHome, ".gemini/antigravity-acp/acp_token.json"));
   return { "openai-codex": gpt, "claude-bridge": existsSync(join(claudeHome, ".credentials.json")), "gemini-cli-acp": googleStore ? true : null };
 }
 
 async function main(): Promise<number> {
   const [command = "help", arg, ...rest] = process.argv.slice(2);
   configure();
+  if (command === "ui" && arg === "reload") throw new Error("Live layout replacement is unavailable: Zellij cannot reliably preserve running pane commands. New workspaces use the new bars; keep existing sessions until their work is saved and finished.");
   if (command === "doctor") {
     const report = { at: new Date().toISOString(), repo: repoRoot, tools: {
       node: process.version, pi: version(process.execPath, [piCLI, "--version"]),
-      claude: version(claudeCLI), gemini: version(process.execPath, [geminiCLI, "--version"]),
+      claude: version(claudeCLI), gemini: existsSync(googleACP) ? "Antigravity ACP 1.2.1 (installed; run install-google.py to verify hashes)" : "MISSING / FAILED",
       neovim: version(join(binDir, "nvim")), zellij: version(join(binDir, "zellij")),
       compiler: version(join(binDir, "cc")), treesitter: version(join(binDir, "tree-sitter")),
     }, credentialsPresent: authStatus(), billingConfirmed: Object.fromEntries(PROVIDERS.map(p => [p, billingConfirmed(p)])), excludedEnvironmentVariableNames: billingEnvNames(),
-      authenticationCheck: "Local storage markers only; Gemini's official CLI validates its encrypted/keychain credentials during connection. null means unknown.",
+      authenticationCheck: "Local storage markers only; the official Google Antigravity ACP server validates its own OAuth credentials during connection. null means unknown.",
       liveProviderValidation: "Not inferred from installation or credentials. Run the verification protocol in docs/VERIFICATION.md.",
     };
     console.log(JSON.stringify(report, null, 2)); return Object.values(report.tools).includes("MISSING / FAILED") ? 1 : 0;
@@ -59,16 +60,18 @@ async function main(): Promise<number> {
       return run(process.execPath, [piCLI, "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "--no-tools", "--no-approve", "--provider", p], repoRoot);
     }
     if (p === "claude-bridge") return run(claudeCLI, ["auth", "login"], repoRoot);
-    console.log("Choose Sign in with Google for your subscription account, complete browser login, then exit. API-key and Vertex routes are disabled.");
-    return run(process.execPath, [geminiCLI, "--extensions", "none"], repoRoot);
+    if (!existsSync(googleACP)) throw new Error("Install the official Google server: python3 scripts/install-google.py");
+    console.log("Google Antigravity ACP: personal subscription OAuth only. This is separate from legacy Gemini CLI login.");
+    await (await import("./google-login.js")).loginGoogle(); return 0;
   }
   if (["agent", "open", "status", "reconcile", "context"].includes(command)) {
     const project = projectPath(arg || process.cwd());
     if (command === "open") {
-      const suffix = `${basename(project).replace(/[^a-zA-Z0-9_-]/g, "_")}-${projectId(project).slice(0, 6)}`;
-      const session = `ph-${suffix}`;
+      const session = workspaceName(project);
       // attach --create recreates a missing workspace and reattaches a live one.
-      return run(join(binDir, "zellij"), ["--config", join(configDir, "zellij.kdl"), "attach", "--create", session, "options", "--default-layout", join(repoRoot, "config/zellij/personal.kdl"), "--default-mode", "locked", "--default-cwd", project], project, { ...harnessEnv(), PH_PROJECT: project, PH_REPO: repoRoot });
+      const layout = join(configDir, "personal.kdl");
+      if (!existsSync(layout)) throw new Error("Run python3 scripts/install-ui.py to install the managed transparent layout.");
+      return run(join(binDir, "zellij"), ["--config", join(configDir, "zellij.kdl"), "attach", "--create", session, "options", "--default-layout", layout, "--default-mode", "locked", "--default-cwd", project], project, { ...harnessEnv(), PH_PROJECT: project, PH_REPO: repoRoot });
     }
     if (command === "status") { const store = new TaskStore(project); console.log(renderHandoff(store.task)); console.log(`State: ${store.dir}`); return 0; }
     const release = acquireProjectLock(project);
@@ -78,7 +81,7 @@ async function main(): Promise<number> {
         const [id, status, ...note] = rest;
         const operation = store.task.operations.find(op => op.id === id);
         if (!operation || !["completed", "failed"].includes(status || "") || !note.length) throw new Error("Usage: ph reconcile PROJECT OPERATION_ID completed|failed 'observed result'");
-        store.endOperation(id!, status === "failed", note.join(" ")); if (!store.unresolved().length) store.task.status = "paused"; store.checkpoint(); return 0;
+        store.reconcile(id!, status === "failed", note.join(" ")); store.checkpoint(); return 0;
       }
       if (command === "context") {
         const [file] = rest; if (!file) throw new Error("Usage: ph context PROJECT FILE");
@@ -89,13 +92,14 @@ async function main(): Promise<number> {
       assertManagedProject(project); assertPrivateAuthStore(join(profileDir, "auth.json")); store.recoverInterrupted();
       const args = [piCLI, "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-context-files", "--no-approve",
         "--extension", join(repoRoot, "dist/extension.js"), "--extension", join(repoRoot, "node_modules/pi-claude-bridge/src/index.ts"),
-        "--session-dir", join(store.dir, "sessions"), "--models", "openai-codex/*,claude-bridge/*,gemini-cli-acp/*", "--tools", "read,bash,edit,write,grep,find,ls"];
+        "--theme", join(repoRoot, "config/pi/ph-mono.json"), "--use-theme", "ph-mono",
+        "--session-dir", join(store.dir, "sessions"), "--models", "openai-codex/*,claude-bridge/*,gemini-cli-acp/*", "--tools", "read,bash,edit,write,grep,find,ls,read_task_artifact,propose_checkpoint"];
       if (rest.includes("--rpc")) args.push("--mode", "rpc");
       else console.log("Personal Harness: /switch selects the primary worker; /task shows saved state. Escape cancels the active turn.");
       return await run(process.execPath, args, project, harnessEnv(), release.track);
     } finally { release(); }
   }
-  console.log(`Personal Harness — code, research, writing, and personal projects\n  ph doctor\n  ph login gpt|claude|gemini\n  ph billing confirm gpt|claude|gemini --extra-usage-off\n  ph open PROJECT          Zellij + LazyVim + agent\n  ph agent PROJECT         Agent only\n  ph status PROJECT        Task and handoff\n  ph reconcile PROJECT ID completed|failed 'observed result'\n  ph context PROJECT FILE  Select input before starting an agent\n\nIn Pi: /switch, /review, /task, /handoff, /usage. No automatic paid fallback.`);
+  console.log(`Personal Harness — code, research, writing, and personal projects\n  ph doctor\n  ph login gpt|claude|gemini\n  ph billing confirm gpt|claude|gemini --extra-usage-off\n  ph open PROJECT          Zellij + LazyVim + agent\n  ph agent PROJECT         Agent only\n  ph status PROJECT        Task and handoff\n  ph reconcile PROJECT ID completed|failed 'observed result'\n  ph context PROJECT FILE  Select input before starting an agent\n\nIn Pi: /switch, /review, /task, /handoff, /usage, /instructions, /checkpoint, /ui motion full|reduced|off. No automatic paid fallback.`);
   return 0;
 }
 main().then(code => { process.exitCode = code; }).catch(error => { console.error(String(error)); process.exitCode = 1; });

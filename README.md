@@ -25,7 +25,7 @@ Keep Zellij **locked** while typing in the editor or agent. “Locked” means i
 
 ### Already installed and logged in?
 
-Skip installation and login. In an ordinary shell, run:
+For version 0.2, update the managed files first (see [Transparent workspace and motion](#transparent-workspace-and-motion)). Google now uses official Antigravity ACP and requires its own one-time `ph login gemini`, even if the older Gemini CLI was logged in. After that, in an ordinary shell, run:
 
 ```sh
 ph doctor
@@ -107,6 +107,29 @@ The first lines should show real folder/file/Git icons, separator shapes, emoji,
 
 For a Linux or macOS computer with this repository checked out, `python3 scripts/install-fonts.py` is an alternative to manually installing the files. It installs pinned fonts into the current user's font directory and verifies SHA-256 hashes from [config/fonts.json](config/fonts.json); Linux also gets Noto Color Emoji. You still need to select the font in the local terminal. The server bootstrap deliberately leaves local desktop font installation to this step.
 
+### Transparent workspace and motion
+
+The UI uses a monochrome palette, transparent terminal backgrounds and short status animations. Code syntax colors remain enabled. In the agent, use `/ui motion full`, `/ui motion reduced`, or `/ui motion off`. `full` is the default; `reduced` and `off` use static status indicators. Animations make no model calls and do not delay streamed answers.
+
+For **Windows Terminal**, open Settings → the profile you use for SSH → Appearance. Enable **acrylic material** and set **background opacity to 80%**. Alternatively, merge [this profile fragment](config/terminal/windows-terminal.profile.json) into that profile's JSON object. Do not replace your complete `settings.json`. Both the Windows setting and the transparent application theme are needed. VS Code's integrated terminal is a separate renderer; Windows Terminal's acrylic setting does not affect it.
+
+Zellij's top and bottom bars use a checksum-pinned local `zjstatus` 0.25.0 plugin. On its first launch, Zellij asks for ReadApplicationState, ChangeApplicationState and RunCommands permissions. That release requests all three even though this configuration has no command widget. The plugin is downloaded only by the installer, not from a floating `latest` URL during startup.
+
+To update an existing installation, run this from the repository:
+
+```sh
+task_data=$(python3 scripts/install_paths.py data)
+export PATH="$task_data/bin:$PATH"
+npm ci --ignore-scripts --no-audit --no-fund
+npm run build
+npm test
+python3 scripts/install-ui.py
+python3 scripts/install-google.py
+python3 scripts/install-launchers.py
+```
+
+New Zellij workspaces use the transparent bars. Existing sessions keep their layout and running programs. A live layout replacement is deliberately unavailable: Zellij can duplicate running panes when matching their commands. Finish work before closing an old workspace; do not kill it just to refresh its appearance. For agent changes, let the current turn finish, `/handoff`, `/quit`, then run `ph agent .` in the same pane. For editor changes, save your files, exit with `:wqa`, then run `ph-edit`. Reattaching alone keeps the old processes and their old configuration.
+
 ### Log in once per account
 
 Run these commands in a shell, not inside Neovim or the agent prompt:
@@ -121,9 +144,9 @@ ph login gemini
 | --- | --- |
 | GPT | In Pi, run `/login`, choose **OpenAI Codex / ChatGPT**, complete browser authentication, then `/quit` |
 | Claude | Follow the official Claude subscription-account login flow |
-| Gemini | Choose **Sign in with Google** for your personal subscription account |
+| Gemini | Follow the official **Antigravity ACP personal Google OAuth** link printed by `ph login gemini` |
 
-For a remote server, open the displayed authentication URL in your local browser and follow the CLI's callback/code instructions. Do not paste credentials into a project file or an AI conversation. API-key and Vertex login routes are not part of this setup.
+For a remote server, open the displayed authentication URL in your local browser. Google ACP prints a temporary loopback port: forward it using VS Code Ports or SSH, or paste the final localhost redirect URL into the waiting `ph login gemini` terminal if the browser cannot connect. Do not paste credentials into a project file or an AI conversation. API-key and Vertex login routes are not part of this setup.
 
 For a new installation, check each account's extra-usage, paid-credit, and auto-refill settings. After disabling additional charges, record your confirmation:
 
@@ -339,7 +362,7 @@ Enter these at the **agent prompt**:
 | `/switch` | Pick GPT, Claude, or Gemini, then a model |
 | `/switch gpt` | Choose a GPT worker |
 | `/switch claude` | Choose a Claude worker |
-| `/switch gemini` | Choose the Gemini CLI account-default worker |
+| `/switch gemini` | Choose the official Antigravity ACP account-default worker |
 | `/review PROVIDER` | Start a fresh read-only review segment with the provider you choose |
 | `/task` | Show the current goal, decisions, next steps, and unresolved operations |
 | `/task new DESCRIPTION` | Archive the previous task state and begin a new task; then use `/switch` |
@@ -349,6 +372,11 @@ Enter these at the **agent prompt**:
 | `/task add PATH` | Select an input file within the project |
 | `/handoff` | Save the task handoff without calling a model |
 | `/usage` | Show recorded usage; unavailable values remain unknown |
+| `/instructions [PATH]` | Preview and approve project instructions; defaults to a file picker |
+| `/instructions remove [PATH]` | Remove one approval, or all approvals when no path is given |
+| `/checkpoint` | Review, edit, approve or reject the current worker's proposed checkpoint |
+| `/task resolve ID NOTE` | Record your observed resolution of an operation's warning signals |
+| `/ui motion full\|reduced\|off` | Set and persist animation preference |
 | `/task done` | Mark the task complete after operations have settled |
 | `/quit` | Exit the agent |
 
@@ -363,7 +391,18 @@ The harness records the failure and pauses; it does not endlessly retry or selec
 3. Run `/switch claude`, `/switch gemini`, or `/switch gpt` to choose an available worker.
 4. Send a new instruction, such as: “Continue from the saved handoff. Check the existing results before running anything again.”
 
-Switching passes a compact task packet: goal, decisions, selected file paths, changes, recent results, and next steps. It does not copy the full conversation. Save important decisions explicitly; the next worker cannot recover every detail of an earlier conversation automatically.
+Switching passes a compact task packet: goal, approved decisions, selected file paths, changes, results, open warnings, and next steps. It does not copy the full conversation. Ask the current worker to **propose a checkpoint**, then use `/checkpoint` to inspect it. Pending proposals must be approved or rejected before switching. You can still record decisions manually with `/task decision` and `/task next`; conversation alone does not automatically become approved state.
+
+The harness adds at most 8 KiB of approved instructions and 16 KiB of handoff text. Oversized sections include a reference to the full task record. The model can use `read_task_artifact` to retrieve registered results in pages, including during read-only review. Raw results are kept privately; warning detection is heuristic, not proof that an analysis is correct. Open warnings from older operations remain in the handoff or its complete warning index until you explicitly record their resolution.
+
+### Apply project instructions once
+
+1. Put concise project rules in `AGENTS.md`, or choose another small file within the project.
+2. In the agent, run `/instructions`, select the file, read its contents and approve it.
+3. Run `/switch` to create a fresh segment with those instructions.
+4. If the file or an imported Gemini instruction changes, review it again. A changed approval pauses the next request.
+
+Project instructions are explicit for all three workers. Google runs in an empty private metadata directory with its native tools disabled; only the managed MCP tools access your project. It receives the approved packet instead of discovering project skills, hooks or rules itself. Its dedicated global profile rejects extra context and configuration. You can approve a `GEMINI.md` explicitly too; imported instruction files must stay inside the project. Pi skills, prompt templates and context files remain disabled. The official provider engines still control their internal prompts, retries and compaction.
 
 If an interrupted operation has an **unknown** outcome, switching is blocked until you inspect what actually happened. Then record that observation:
 
@@ -384,7 +423,7 @@ ph reconcile /path/to/project OPERATION_ID completed 'Observed output and exit s
 3. Add the relevant code, notes, manuscript, or result files and choose a worker.
 4. Give a concrete request with a completion condition.
 5. Review changed files and run the relevant checks in the `run` tab.
-6. Record decisions and next steps; use `/review` when an independent review helps.
+6. Review `/checkpoint` proposals and record decisions; use `/review` when an independent review helps.
 7. Save files, run `/handoff`, and detach.
 
 For writing, select the draft and sources. For programming, select the code and requirements. For research, select the approved plan and relevant results. A task does not need to involve code.
@@ -395,11 +434,11 @@ For writing, select the draft and sources. For programming, select the code and 
 | --- | --- |
 | GPT | Pi's `openai-codex` subscription OAuth transport |
 | Claude | `pi-claude-bridge` and the official Claude Agent SDK/runtime |
-| Gemini | The harness's ACP adapter and the official `gemini --acp` runtime |
+| Gemini | The harness's ACP adapter and Google's unmodified Antigravity ACP server 1.2.1 |
 
 Claude and Gemini retain their official internal execution engines. Model availability and limits depend on the account. A model appearing in a picker is not proof of access. Gemini's local `cli-default` entry is not a model ID or a quota promise.
 
-The launcher excludes alternative API keys and gateways, restricts supported providers, and avoids automatic paid fallback. Account extra-usage settings remain your responsibility. Token counts or displayed API-equivalent costs do not directly report subscription quota or actual charges.
+The launcher excludes alternative API keys and gateways, restricts supported providers, and avoids automatic paid fallback. Account extra-usage settings remain your responsibility. The pinned Google ACP consumer transport does not opt into extra-credit fallback; account-side settings still apply. Token counts or displayed API-equivalent costs do not directly report subscription quota or actual charges.
 
 Managed file tools restrict paths; review mode blocks managed writes and shell execution. **This is not an operating-system sandbox.** Approved shell commands and plugins run with your Unix user's permissions. Use a suitable project directory and keep private credentials and restricted data outside the material you give to a model. Remote model requests send the selected content to the provider.
 
@@ -428,6 +467,8 @@ export PATH="$task_data/bin:$PATH"
 npm ci --ignore-scripts --no-audit --no-fund
 npm run build
 npm test
+python3 scripts/install-ui.py
+python3 scripts/install-google.py
 python3 scripts/install-launchers.py
 ph doctor
 ```
@@ -448,7 +489,8 @@ To preview removing the launchers and editor configuration, run `python3 scripts
 | Editor shortcuts switch Zellij modes | Lock Zellij with `Ctrl+g` and try again |
 | No worker is selected | Use `/switch`, choose a model, then send your request |
 | Login succeeded but the agent does not see it | Finish the current turn, `/quit`, and start `ph agent .` again |
-| `doctor` reports an unknown Google credential marker | The official CLI may use a keychain; test the official login/connection rather than creating a plaintext credential file |
+| Google login worked in Gemini CLI but the harness asks again | Run `ph login gemini`: Antigravity ACP has a separate official credential store. Never copy OAuth tokens between clients |
+| Google reports `UNSUPPORTED_CLIENT` | Use the pinned Antigravity ACP integration in 0.2; older Gemini CLI account access is no longer accepted for this individual account |
 | Another harness writer is active | Reattach with `ph open .`; do not start a second `ph agent` for the same project or delete a live lock |
 | Switching is blocked by an unknown operation | Inspect the output/process, then use `/task reconcile` with the observed result |
 | Existing provider settings are rejected | Use a clean project or explicitly review the conflicting configuration; the harness does not silently merge alternate billing routes |

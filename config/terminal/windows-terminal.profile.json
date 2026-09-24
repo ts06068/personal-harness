@@ -1,0 +1,9 @@
+{
+  "useAcrylic": true,
+  "opacity": 80,
+  "background": "#101010",
+  "foreground": "#e5e5e5",
+  "cursorColor": "#e5e5e5",
+  "font": { "face": "JetBrainsMono Nerd Font Mono", "size": 12 },
+  "experimental.retroTerminalEffect": false
+}

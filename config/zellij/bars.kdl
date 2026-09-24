@@ -1,0 +1,28 @@
+pane_template name="ph_tabs" {
+    plugin location="file:__PH_ZJSTATUS__" {
+        ph_bar "tabs"
+        format_left "#[fg=#e5e5e5,bold] PERSONAL  {tabs}"
+        format_right "#[fg=#909090] {session} "
+        format_space ""
+        tab_normal "#[fg=#909090] {index} {name} "
+        tab_active "#[fg=#ffffff,bold] [{index} {name}] "
+        hide_frame_for_single_pane "false"
+        border_enabled "false"
+    }
+}
+pane_template name="ph_status" {
+    plugin location="file:__PH_ZJSTATUS__" {
+        ph_bar "status"
+        format_left "{mode}"
+        format_right "#[fg=#909090] Ctrl+g lock/unlock · Esc back "
+        format_space ""
+        mode_normal "#[fg=#e5e5e5,bold] UNLOCKED  Ctrl+p panes · Ctrl+t tabs · Ctrl+o,d detach "
+        mode_locked "#[fg=#909090] LOCKED  keys go to the application "
+        mode_pane "#[fg=#e5e5e5,bold] PANE  h/j/k/l focus · n new · r right · d down "
+        mode_tab "#[fg=#e5e5e5,bold] TAB  1–9 select · n new · r rename "
+        mode_resize "#[fg=#e5e5e5,bold] RESIZE  arrows · Esc back "
+        mode_default_to_mode "normal"
+        hide_frame_for_single_pane "false"
+        border_enabled "false"
+    }
+}

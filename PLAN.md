@@ -1,52 +1,83 @@
 # Personal Harness implementation plan
 
-Approved decisions (2026-09-24):
+Approved scope (2026-09-25): a general-purpose SSH workspace for programming,
+research, writing and personal projects. Keep Pi, Neovim and Zellij. GPT, Claude
+and Gemini remain manually selectable primary workers. At a rate limit, save,
+stop and let the user select another subscription. No paid API fallback.
 
-- General-purpose personal work: research, programming, manuscripts, software development, and hobby projects. No fixed research-only role.
-- Primary commands: `ph`, `ph-edit` only. The repository is named `personal-harness`. Existing account and task stores remain in place when upgrading.
-- Font-independent text labels for the default terminal UI.
-- Ubuntu SSH workspace with Zellij and LazyVim.
-- Pi is the initial host; compatibility takes priority over OMP-specific features.
-- GPT, Claude, and Gemini are selectable primary workers. No permanent lead model.
-- At rate limits: save state, stop, and let the user choose the next provider.
-- Handoff uses the task brief, decisions, changes, results, and outstanding work.
-  Full transcripts remain on disk and are not automatically replayed across providers.
-- Subscription authentication only; no model API-key or paid gateway fallback.
-- First milestone: workspace, three provider connections, handoff, and local records.
-  R, Quarto, clinical pipelines, literature, mail, calendar, Drive, and OMP migration
-  are later milestones.
+## Hardening
 
-## Architecture
+- Resolve every existing path component; reject dangling, cyclic and escaping
+  symlinks. Use the checked path in Pi tools and ACP; guard new ACP file writes.
+- Lock a Git worktree root or canonical directory and reject overlapping active
+  scopes. Preserve separate worktrees and live orphan-worker leases.
+- Migrate v1 tasks with a private backup. Store complete available results as
+  immutable task-scoped artifacts. Preserve exit codes, warning signals and
+  reconciliation notes without overwriting original evidence.
+- Limit handoffs to 16 KiB and instruction packets to 8 KiB. Include open warning
+  counts and complete-index references even when excerpts cannot fit. Expose
+  read_task_artifact with bounded UTF-8 paging in work and review modes.
 
-Zellij (`edit`, `agent`, `run`) hosts LazyVim and Pi. GPT uses Pi's Codex OAuth
-provider. Claude uses pi-claude-bridge and the official Claude Agent SDK.
-Gemini uses a local TypeScript ACP provider calling the official Gemini CLI.
-Claude and Gemini retain their own internal execution engines.
+## Instructions and checkpoints
 
-Implement `ph open`, `ph doctor`, provider login, and `/task`, `/switch`,
-`/handoff`, `/review`, `/usage`. Persist state as atomic JSON plus JSONL events.
-Only one writer may own a project. A provider switch waits for tools to settle,
-checkpoints the current state, creates a new session, and waits for user input.
-Uncertain operations are recorded and never silently replayed.
+- /instructions previews explicit project files and records a content-bound
+  approval. Changes require review. Prevent implicit native project context loading,
+  including imported files. Google uses an empty native metadata workspace and a dedicated global profile; project access goes through managed MCP.
+- The current worker can propose_checkpoint during an ordinary turn. /checkpoint
+  lets the user approve, edit or reject it. Proposals never approve themselves;
+  no additional summarizer model is called.
+- Share these tools through Pi for GPT/Claude and a managed authenticated loopback HTTP MCP
+  server for Gemini, owned by the parent so tools cannot race task-state writes.
+- Preserve raw tool outputs before reducing model-facing output to 8 KiB.
+  Use Pi result hooks and the parent-owned Google MCP tool path. Record real
+  usage/model information where available; unknown remains unknown.
+- Warn at 70%/85% only when the context gauge is known. Do not interpret Gemini's
+  local picker alias or placeholder window as a measured model or account quota.
 
-## Installation
+## Transparent monochrome UI
 
-Pin Pi 0.87.1, pi-claude-bridge 0.8.0, Gemini CLI 0.61.0, ACP SDK 1.5.0.
-Use Node >=22.19 and Neovim >=0.11.2. Record exact runtime and plugin versions.
-Keep executables, configuration, and credentials in persistent user storage.
-Prepare repeatable system build-tool installation where sudo is needed; prefer
-an equivalent user-local toolchain when root is unavailable. Preserve existing
-configuration with explicit backups and a restore manifest.
+- Use Grok-inspired white/gray UI, retaining code syntax colors and limited
+  warning/error highlights. Keep Nerd Font icons. All application backgrounds,
+  including editor floats and workspace bars, use the terminal default.
+- Use pinned zjstatus 0.25.0 for transparent Zellij bars; do not configure its
+  command widgets. Document its actual requested permissions.
+- Provide Windows Terminal profile settings with acrylic enabled and opacity
+  80. The Windows client must apply them; VS Code is a separate renderer.
+- Add a short startup wordmark, work/tool activity and completion transitions.
+  Maximum 12 fps; no idle animation loop or model calls for decoration. Provide
+  /ui motion full|reduced|off and disable TUI decoration in RPC/JSON/print modes.
+- Apply bars to new workspaces and retain existing sessions. Runtime validation
+  rejected live layout replacement: Zellij can duplicate panes when matching
+  running commands. Do not force-quit editors or agents for a UI refresh.
 
-## Verification and completion
+## Verification and rollout
 
-Test safe handoff, rate limits without retries/fallback, pending operations,
-project locks, credential-route rejection, ACP cancellation and tool execution,
-editor startup, and terminal workspace reattachment. Use a synthetic Git fixture.
-Each real provider must pass authenticated response/read/edit/test/cancel checks.
-Record unverified checks honestly. Do not call three-provider integration complete
-until the user's accounts have passed live tests.
+Execute regression tests for path escapes, overlapping locks, warning retention,
+Unicode budgets/paging, v1 migration, instruction approval, stale proposals,
+MCP task isolation, native Google profile isolation, cancellation and non-TUI rendering.
+Check real editor rendering and a disposable Zellij session before updating
+the managed layout for future sessions. Preserve existing credentials and legacy storage locations.
 
-Account-side extra usage and auto-refill require separate confirmation. Local
-authentication guards do not prove account billing settings. Missing usage stays
-unknown; estimates are labeled. No claim of OS-level sandboxing is made.
+Use synthetic projects for real GPT/Claude/Gemini response, read, edit, execution,
+cancel, handoff and review checks. Simulate quota exhaustion. Compare the same
+task/model's total usage and quality before making efficiency claims. Distinguish
+runtime checks, real inference, account attestations and Windows visual checks in
+docs/VERIFICATION.md. Keep logs, artifacts, credentials and UI backups private.
+
+Keep the README and operational documentation in English, with Getting Started,
+actual key sequences, the new commands, Windows appearance setup and recovery.
+R/Quarto, literature, mail/calendar/Drive, OS isolation and OMP migration remain
+later milestones. This is not an OS sandbox against another process running as
+the same Unix user.
+
+## Verified implementation adjustment: Google transport
+
+On 2026-09-25, corrected Gemini CLI OAuth settings exposed Google's
+`UNSUPPORTED_CLIENT` rejection for this individual account. Replace Gemini CLI
+with Google's official Antigravity ACP 1.2.1 distribution from the ACP registry.
+Pin the archive hash, use `oauth-personal`, disable native tools via the supported
+`_meta.agy.enabledTools` filter, and advertise no client filesystem or terminal
+capabilities. Keep the legacy `gemini-cli-acp` route ID only for stored tasks and
+billing attestations. The new official credential store requires a separate
+login; tokens are not copied. Missing usage is recorded as unknown. See the
+verification report for the actual completed live checks and remaining limits.

@@ -1,37 +1,34 @@
 # Sources and pinned interfaces
 
-Inspected 2026-09-24. Installed source and package-lock.json are the implementation contracts.
-Provider terms/account entitlements still require checking at use time.
+Inspected through 2026-09-25. Installed source, pinned archives and `package-lock.json` define the tested contracts. Provider terms and account entitlements can change.
 
-- [OpenAI authentication](https://learn.chatgpt.com/docs/auth/): official ChatGPT subscription login.
-- [Pi providers](https://pi.dev/docs/latest/providers): provider configuration and authentication.
-- [Pi Claude bridge](https://github.com/elidickinson/pi-claude-bridge): published version 0.8.0.
-- [Claude Agent SDK with Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan): current subscription guidance. Do not generalize it to credential brokerage or paid API routes.
-- [Gemini CLI authentication](https://geminicli.com/docs/get-started/authentication/): personal Google OAuth.
-- [Gemini CLI ACP](https://geminicli.com/docs/cli/acp-mode/): official programmatic CLI integration.
-- [Gemini configuration](https://geminicli.com/docs/reference/configuration/): auth selectors and tool/retry settings.
-- [ACP protocol](https://agentclientprotocol.com/protocol/overview): stream, permission, filesystem and terminal methods.
-- [LazyVim installation](https://www.lazyvim.org/installation): editor requirements.
-- [Zellij layouts](https://zellij.dev/documentation/layouts.html): workspace layout and startup commands.
+## Provider interfaces
 
-Concrete versions: Pi 0.87.1; pi-ai 0.87.1; pi-claude-bridge 0.8.0;
-Claude Agent SDK 0.3.267 / Claude Code 2.1.267; Gemini CLI 0.61.0; ACP SDK 1.5.0.
-The current ACP SDK removed legacy model-selection fields; v1 therefore uses the official CLI
-account default instead of pretending that an old extension's hard-coded list is current.
+- [OpenAI authentication](https://learn.chatgpt.com/docs/auth/): ChatGPT subscription login. Pi's installed `openai-codex` transport is the integration used here.
+- [Pi providers](https://pi.dev/docs/latest/providers): provider configuration and authentication. The installed 0.87.1 extension types/runtime define the tool, session and result-hook behavior.
+- [Pi Claude bridge](https://github.com/elidickinson/pi-claude-bridge): pinned 0.8.0, using the official Agent SDK.
+- [Claude Agent SDK with a Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan): subscription guidance; this is not authorization for credential brokerage or alternate paid API routes.
+- [Google external-agent integration](https://antigravity.google/docs/ide/extensions/zed): documents personal Google subscription authentication as `oauth-personal`, distinct from API and enterprise routes.
+- [Official Antigravity ACP registry entry](https://github.com/agentclientprotocol/registry/blob/main/antigravity-acp/agent.json): Google LLC distribution, version 1.2.1, official download URLs and Linux `--uid=` argument.
+- [Google's Gemini CLI migration guide](https://antigravity.google/docs/cli/gcli-migration/): transition to Antigravity. The actual `UNSUPPORTED_CLIENT` result is recorded as a local account observation in VERIFICATION.md, not a claim about every account.
+- [ACP protocol](https://agentclientprotocol.com/protocol/overview): sessions, streaming, permissions, files and terminal methods.
 
-In Pi 0.87 session replacement recreates extensions. Selection intent is persisted before
-replacement and consumed by the new extension instance. Old `pi`/`ctx` references are not reused.
-The actual runtime integration test covers this behavior without calling a model.
+Concrete versions: Pi/pi-ai/pi-tui 0.87.1; pi-claude-bridge 0.8.0; Claude Agent SDK 0.3.267 / Claude Code 2.1.267; Google Antigravity ACP 1.2.1; ACP SDK 1.5.0; MCP SDK 1.30.1. Gemini CLI 0.61.0 is no longer a runtime dependency.
 
-Terminal UI update (2026-09-24):
+Google's unmodified Linux archive was inspected to confirm its dedicated `GEMINI_HOME`, personal-auth settings/store, native context discovery, MCP permission metadata, and `_meta.agy.enabledTools` session filter. The harness disables native tools and native client capabilities and supplies its own authenticated MCP endpoint. ACP `configOptions` supplies the reported model when available. These are version-specific integration contracts; recheck them before changing the pinned server. The archive hash pins the bytes downloaded from Google's official HTTPS host; no independently signed upstream checksum was found. See [the installer](../scripts/install-google.py) and [download record](../verification/installed-tools.json).
 
-- [LazyVim requirements](https://www.lazyvim.org/): Nerd Fonts 3 or newer for icon display.
-- [Nerd Fonts 3.5.1](https://github.com/ryanoasis/nerd-fonts/releases/tag/v3.5.1): patched JetBrainsMono; regular, bold, italic, and bold-italic Mono files are pinned in `config/fonts.json`.
-- [Noto Emoji 2.051](https://github.com/googlefonts/noto-emoji/tree/v2.051): Linux color-emoji fallback.
-- [VS Code terminal appearance](https://code.visualstudio.com/docs/terminal/appearance): `terminal.integrated.fontFamily` accepts a CSS font family list.
-- [Windows Terminal appearance](https://learn.microsoft.com/en-us/windows/terminal/customize-settings/profile-appearance): terminal profile font selection.
-- [Zellij simplified UI](https://zellij.dev/documentation/options#simplified_ui): tab/status separators.
-- [Zellij 0.45.1 options](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/input/options.rs): `merge_from_cli` XORs duplicate booleans. Configure `simplified_ui false` in the file only to retain icon separators.
-- Installed Gemini CLI 0.61.0 source, `OAuthCredentialStorage`/`FileKeychain`: Google OAuth can be stored as encrypted `gemini-credentials.json` or in a keychain. The old plaintext-file check is insufficient; the official ACP session owns authentication.
+Pi 0.87 session replacement recreates extensions. Selection intent is persisted before replacement and consumed by the new extension instance. Old `pi`/`ctx` references are not reused. A real runtime test covers replacement without inference; separate opt-in account tests cover actual workers.
 
-- [Windows font registration](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-addfontresourceexw) and [font-change notification](https://learn.microsoft.com/en-us/windows/win32/gdi/wm-fontchange): native calls used by the per-user Windows font installer.
+## Terminal and editor
+
+- [LazyVim installation](https://www.lazyvim.org/installation) and [requirements](https://www.lazyvim.org/): editor dependencies and Nerd Fonts 3+.
+- [Nerd Fonts 3.5.1](https://github.com/ryanoasis/nerd-fonts/releases/tag/v3.5.1): JetBrainsMono Mono files pinned in `config/fonts.json`.
+- [Noto Emoji 2.051](https://github.com/googlefonts/noto-emoji/tree/v2.051): Linux emoji fallback.
+- [VS Code terminal appearance](https://code.visualstudio.com/docs/terminal/appearance): font-family configuration in the local renderer.
+- [Windows Terminal profile appearance](https://learn.microsoft.com/en-us/windows/terminal/customize-settings/profile-appearance): font, opacity and acrylic options. The checked-in fragment must be merged into the local SSH profile.
+- [Windows font registration](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-addfontresourceexw) and [font-change notification](https://learn.microsoft.com/en-us/windows/win32/gdi/wm-fontchange): calls used by the per-user installer.
+- [Zellij layouts](https://zellij.dev/documentation/layouts.html): tabs, panes and startup commands.
+- [Zellij 0.45.1 options](https://github.com/zellij-org/zellij/blob/v0.45.1/zellij-utils/src/input/options.rs): duplicate CLI/file booleans are XORed; the launcher sets display options in one place.
+- [zjstatus 0.25.0](https://github.com/dj95/zjstatus/releases/tag/v0.25.0): pinned local WebAssembly bars with terminal-default backgrounds. The runtime permission prompt was checked even though this layout uses no command widget.
+
+Theme backgrounds, timer behavior and layout replacement were checked against the installed runtimes. A real disposable Zellij session demonstrated that live layout replacement can duplicate panes, so updates apply to new sessions. This preserves existing user sessions rather than promising safe hot reload.
