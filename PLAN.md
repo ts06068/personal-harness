@@ -140,3 +140,38 @@ without claiming that mocked WSL commands are actual Windows execution.
 
 Usage-efficiency benchmarking and additional domain tools remain separate work.
 Execution evidence and unverified platform limits are recorded in docs/VERIFICATION.md.
+
+## Operational closeout (v0.3.1 baseline, 2026-09-25)
+
+Keep the installed v0.3.1 package as the daily runtime and develop changes in
+separate branches/worktrees. This closeout changes English documentation only.
+Do not reinstall, repoint the launcher, update dependencies, add a provider or
+publish another release for this documentation merge. Preserve existing account
+stores, legacy paths and active workspaces. See [operations](docs/OPERATIONS.md)
+for daily use and selective recovery.
+
+- [x] Check the active launcher, version, diagnostics and enabled routes: the
+  installed 0.3.1 package and the three existing subscription routes are in use.
+- [x] Complete a real documentation task with the installed harness: ChatGPT
+  author, approved checkpoint, Claude read-only review, original-result retrieval
+  and author corrections. Keep changes in the documentation worktree.
+- [x] Stop and restart the agent normally; verify the task, approved decisions,
+  instructions and 44 original-result references survive without a model call.
+- [x] Capture a private baseline while agents/tools are stopped. Verify existing
+  release checksums, stable source hashes and temporary restoration of 171 files,
+  15 tasks, 58 artifact references and one instruction approval. Exclude credentials,
+  locks/PIDs, runtime dependencies and separate project source/data. Leave live
+  state untouched.
+- [ ] Obtain the user's Windows Terminal editing, tab navigation, SSH reconnect
+  and visual confirmation; preserve the worktree until its processes are closed.
+
+Deliver this reviewed documentation through the normal branch merge and push;
+keep v0.3.1 release assets unchanged. Remove the worktree only after the user's
+client check and after its agent, editor and shells have left it.
+
+Server-side checks have passed; overall closeout remains pending the client
+confirmation. Historical regression/live-call checks
+were not repeated for this documentation-only change. Continue with actual daily
+work after closeout; address demonstrated blockers with small verified changes.
+Token savings remain an operational measurement, not a completion claim. Detailed
+observations and limits are in [verification](docs/VERIFICATION.md).

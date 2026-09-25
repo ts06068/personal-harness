@@ -140,3 +140,43 @@ These use temporary profiles and a loopback fixture, with no external model call
 - The active server's VS Code Remote terminal setting names the new font and OS emoji fallbacks. The Windows desktop filesystem is not accessible from this server; Windows installation, the local VS Code/SSH terminal's selected font, and the resulting visible glyphs must be confirmed on that computer. Installing server fonts alone cannot validate them.
 
 After local font installation and terminal configuration, run `python3 scripts/check-icons.py` from this repository in each client. Confirm the displayed shapes visually. Save and restart Neovim after applying the new editor configuration; an existing process retains the previous ASCII plugin options.
+
+## Operational closeout status (2026-09-25, documentation only)
+
+The daily launcher still targets the installed `apps/0.3.1/node_modules/personal-harness`
+package, separately from the development worktree. `ph --version` returned 0.3.1;
+`ph doctor` succeeded; `ph providers list` showed only ChatGPT/openai-codex,
+Claude/claude-bridge and Gemini/gemini-cli-acp. Existing extra-usage-off confirmations
+remain. Start/end hashes matched for all 52 installed package files and the 20
+previously recorded account, billing and task files. No reinstall, login, dependency
+update, new provider, version bump or new release was performed.
+
+| Check performed in this closeout | Observed result |
+| --- | --- |
+| Real documentation task | Installed harness used ChatGPT `gpt-6-sol` to author, an operator-approved checkpoint, Claude `claude-sonnet-4-6` to review, and ChatGPT to correct the four allowed documents. |
+| Read-only review and handoff | Approved decisions survived the switch; the four document hashes stayed unchanged during review. Claude made six `read_task_artifact` calls, including retrieval of original operation results. |
+| Normal process restart | Same task ID, approved decisions and instruction approval; all 44 artifact references and their content hashes preserved. No running/unknown operations and no model call during restart. The documentation task was marked complete. |
+| Private baseline | Captured while agents/tools were stopped at `20260925T012044Z` under `~/.local/share/personal-harness-backups/v0.3.1/`. Contains 171 selected files (4,786,073 source bytes) and copies of the existing release assets. Pre/post source inventories and release/snapshot checksums matched. |
+| Temporary recovery check | Verified all file hashes, sizes and original modes, 15 task records, 58 artifact references and one instruction approval in a separate private directory. Safe extraction normalized 14 file modes; recorded ordinary modes were restored and checked only in that temporary directory. No production restore occurred. |
+| Backup scope and access | Directories 700; snapshot/report/release files 600. Provider credential stores, API-key files, locks/PIDs, installed tools/dependencies and separate project source/data are excluded. Recovery still needs those separate resources; installation is not guaranteed offline. |
+| Documentation validation | Changed-file allowlist, local Markdown links/fences and `git diff --check` passed. No runtime files changed. |
+| Windows client acceptance | Pending user confirmation of editing, tabs, SSH detach/reconnect and visible icons/transparency. Server checks do not establish Windows rendering. |
+
+The task required four author/reviewer prompts, including review clarification and
+correction. One author read exceeded EOF without mutation. The reviewer initially
+overgeneralized operation success and later mislabeled an empty result; checking
+original artifacts together with RPC command inputs corrected both interpretations.
+Documentation fixes restored storage mappings, account/permission boundaries and
+recovery limits. These observations show actual rework, not a measured efficiency gain.
+
+The saved `/usage` report records 24 provider response messages, 28 read/search
+operations, one failed operation and three approved validation records. Response
+messages are not a count of internal provider requests. Reported input/output/cache
+values do not prove subscription quota use, billing status or token savings.
+
+The 41-test suite and three-provider synthetic checks above remain historical;
+they were not rerun for these documentation edits. The actual closeout task used
+two providers. Account billing confirmations are user attestations, not an independent
+account audit. **Server work is verified; overall closeout awaits the Windows client
+confirmation.** Private evidence and the snapshot's
+machine-specific `RESTORE.md` remain outside the public repository.

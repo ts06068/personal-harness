@@ -12,6 +12,7 @@ Start with [installation](#install-and-start) and [your first task](#your-first-
 - [Developing Personal Harness with Git worktree](#develop-personal-harness-with-git-worktree)
 - [Adding another worker](#add-another-worker)
 - [Troubleshooting](#when-something-goes-wrong)
+- [Daily release checks and recovery](docs/OPERATIONS.md)
 
 ## Install and start
 
@@ -515,9 +516,7 @@ git status --short
 
 This saves a Git commit locally. Publishing a branch or release is a separate step you can request when ready.
 
-### 4. Apply the reviewed version and restart
-
-Save files and task state, then `/quit` agents using the harness before updating its installed dependencies. Exit editors with `:wqa` when applying editor settings. **Detaching alone leaves these processes running.** Move to an ordinary shell outside the worktree workspace.
+### 4. Merge the reviewed change; keep the daily release
 
 In the original source checkout, check for a clean working tree before merging:
 
@@ -528,18 +527,9 @@ git switch main
 git merge --ff-only feat/harness-update
 ```
 
-If the merge is refused because `main` advanced, stop here and reconcile the branches in the development worktree, then verify the resulting code. Continue only after the merge succeeds.
+If the merge is refused because `main` advanced, stop here and reconcile the branches in the development worktree, then verify the resulting code. For documentation-only edits, merging is enough: **do not reinstall or repoint the daily launcher**. The installed release remains separate from the development checkout. Continue work with `ph open /path/to/project`; reattaching a live agent does not load changed runtime code.
 
-For documentation-only edits, the merged files are already updated and you can skip reinstallation. To use the merged source checkout as your installed harness, run from that checkout:
-
-```sh
-sh scripts/bootstrap.sh
-ph doctor
-```
-
-This builds and tests the merged version, applies workspace settings and points the managed `ph` launcher at this source checkout. For an npm installation, it deliberately changes the active runtime to your source checkout. It keeps the existing account/task stores. Keep this checkout at that path while using it; see [installation and updates](docs/INSTALLATION.md#update-or-remove) when changing installation methods.
-
-Reopen your normal project with `ph open /path/to/project`. In an exited agent/editor pane, press `Enter` to relaunch; existing live panes do not automatically load the update. At a new agent prompt, inspect `/task`, choose `/switch`, and send your next request.
+For a deliberate runtime change, first review and validate it, settle agent turns and save task state, then stop relevant agents/editors before changing the installation. Detaching alone leaves processes running. Activating source code instead of the stable release is an explicit advanced choice; follow [installation and updates](docs/INSTALLATION.md#update-or-remove) and [daily operations](docs/OPERATIONS.md), rather than running bootstrap as a routine merge step. After an intentional update, restart the affected agent/editor and inspect `/task` and `/switch` before continuing.
 
 ### 5. Remove the finished worktree when convenient
 
@@ -611,7 +601,7 @@ Remove an added route with `ph providers remove PROVIDER_ID`. To adjust animatio
 | Enter sends text before you finish typing | Use `Ctrl+j` or `Shift+Enter` for a new line |
 | The editor still shows an older file version | Save/resolve your edits, then use `:checktime` |
 | Git diff fills the screen and seems stuck | Press `q` to leave the pager |
-| Changes to the harness do not appear | Build and apply the reviewed checkout, then restart the agent; `ph open` alone reattaches a live process |
+| Changes to the harness do not appear | The installed release is separate from the worktree; apply a reviewed runtime update deliberately, then restart the agent. `ph open` alone reattaches a live process |
 | Icons are boxes | Select JetBrainsMono Nerd Font Mono in the local terminal; see [font setup](docs/INSTALLATION.md#terminal-fonts) |
 | Windows installation stops at WSL setup | Finish the requested restart and Ubuntu user setup, then rerun the installer |
 
