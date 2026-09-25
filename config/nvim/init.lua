@@ -21,6 +21,12 @@ require("lazy").setup({
     { "LazyVim/LazyVim", commit = "999700997f72227187d49d8b92667183dc7fc809", import = "lazyvim.plugins" },
     { import = "lazyvim.plugins.extras.editor.neo-tree" },
     treesitter,
+    {
+      "saghen/blink.cmp",
+      -- Our Linux x64 / WSL runtime uses glibc. The bundled Zig cross-compiler
+      -- reports musl to `cc -dumpmachine`, which is not the editor's host ABI.
+      opts = { fuzzy = { prebuilt_binaries = { force_system_triple = "x86_64-unknown-linux-gnu" } } },
+    },
     { "mason-org/mason.nvim", opts = { ensure_installed = {} } },
     { import = "plugins.personal-ui" },
   },

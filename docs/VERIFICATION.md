@@ -182,3 +182,37 @@ user confirmed the Windows Terminal over SSH workflow. Before cleanup, the
 documentation worktree had no changes or running processes, and its saved task
 was complete with no running/unknown operations. Private evidence and the snapshot's
 machine-specific `RESTORE.md` remain outside the public repository.
+
+## Editor completion repair after closeout (2026-09-25)
+
+The user subsequently reported a red `vim.schedule` error while following the
+hello-harness tutorial. Reading the existing editor's error state identified
+`blink_cmp_fuzzy`: its native library required `libc.so`, which this Ubuntu host
+does not provide. The managed Zig compiler reported `x86_64-unknown-linux-musl`
+to `cc -dumpmachine`, while the host reported glibc 2.43. Blink used that compiler
+output to select a musl binary. Earlier parser/startup checks had not exercised
+the completion plugin's asynchronous initialization on first input.
+
+The managed Linux x64/WSL configuration now selects the
+`x86_64-unknown-linux-gnu` prebuilt target explicitly, using Blink's supported
+[target override](https://cmp.saghen.dev/configuration/fuzzy). The existing server's
+cached library was replaced with the GNU build of the same pinned Blink v1.10.2,
+after verifying its published SHA-256. Its Rust completion implementation remains
+enabled. Merely changing the target does not invalidate a previously downloaded
+same-version cache; that existing cache was repaired separately and backed up.
+
+- The original library reproduced the callback error in an isolated editor.
+- With the corrected library/configuration, initialization completed without a
+  Lua error and fuzzy matching returned the expected `personalHarness` candidate.
+- A separate real Neovim TUI exercised `InsertEnter`, buffer completion display,
+  selection with `Ctrl+y`, and saving the completed text through `:write`.
+- The enhanced `setup-editor.lua` now waits for completion initialization and
+  checks a matching result. It passed along with all nine required parsers.
+- The actual managed `ph-edit` launcher and repaired user profile also passed the
+  completion check. User editor processes and project files were left open and
+  unchanged; an already affected editor must be saved and reopened.
+
+The source configuration and setup check are updated; the existing packaged
+v0.3.1 runtime and release assets were not rewritten. The local profile/cache repair
+is separate from that immutable package. No provider calls or TypeScript changes
+were needed, and the 41-test agent suite was not rerun for this editor correction.
