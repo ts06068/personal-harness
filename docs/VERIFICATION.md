@@ -160,7 +160,7 @@ update, new provider, version bump or new release was performed.
 | Temporary recovery check | Verified all file hashes, sizes and original modes, 15 task records, 58 artifact references and one instruction approval in a separate private directory. Safe extraction normalized 14 file modes; recorded ordinary modes were restored and checked only in that temporary directory. No production restore occurred. |
 | Backup scope and access | Directories 700; snapshot/report/release files 600. Provider credential stores, API-key files, locks/PIDs, installed tools/dependencies and separate project source/data are excluded. Recovery still needs those separate resources; installation is not guaranteed offline. |
 | Documentation validation | Changed-file allowlist, local Markdown links/fences and `git diff --check` passed. No runtime files changed. |
-| Windows client acceptance | Pending user confirmation of editing, tabs, SSH detach/reconnect and visible icons/transparency. Server checks do not establish Windows rendering. |
+| Windows client acceptance | On 2026-09-25, the user confirmed that editing/saving, tab navigation, saved task/decisions after SSH detach/reconnect, and visible icons/transparency worked in Windows Terminal over SSH, then closed the workspace applications. This is user-reported desktop verification; it does not validate a native Windows runtime or the WSL installer. |
 
 The task required four author/reviewer prompts, including review clarification and
 correction. One author read exceeded EOF without mutation. The reviewer initially
@@ -177,6 +177,8 @@ values do not prove subscription quota use, billing status or token savings.
 The 41-test suite and three-provider synthetic checks above remain historical;
 they were not rerun for these documentation edits. The actual closeout task used
 two providers. Account billing confirmations are user attestations, not an independent
-account audit. **Server work is verified; overall closeout awaits the Windows client
-confirmation.** Private evidence and the snapshot's
+account audit. **First-stage closeout is complete:** server checks passed and the
+user confirmed the Windows Terminal over SSH workflow. Before cleanup, the
+documentation worktree had no changes or running processes, and its saved task
+was complete with no running/unknown operations. Private evidence and the snapshot's
 machine-specific `RESTORE.md` remain outside the public repository.

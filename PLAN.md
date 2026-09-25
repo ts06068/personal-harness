@@ -162,16 +162,19 @@ for daily use and selective recovery.
   15 tasks, 58 artifact references and one instruction approval. Exclude credentials,
   locks/PIDs, runtime dependencies and separate project source/data. Leave live
   state untouched.
-- [ ] Obtain the user's Windows Terminal editing, tab navigation, SSH reconnect
-  and visual confirmation; preserve the worktree until its processes are closed.
+- [x] Obtain the user's Windows Terminal editing, tab navigation, SSH reconnect
+  and visual confirmation. The user confirmed all checks passed and closed the
+  workspace applications on 2026-09-25; no worktree processes or unsaved Git
+  changes remained when checked before cleanup.
 
 Deliver this reviewed documentation through the normal branch merge and push;
 keep v0.3.1 release assets unchanged. Remove the worktree only after the user's
 client check and after its agent, editor and shells have left it.
 
-Server-side checks have passed; overall closeout remains pending the client
-confirmation. Historical regression/live-call checks
-were not repeated for this documentation-only change. Continue with actual daily
-work after closeout; address demonstrated blockers with small verified changes.
+First-stage closeout is complete: the installed release, recovery baseline and
+actual task workflow passed server checks, and the Windows Terminal over SSH
+workflow was confirmed by the user. Historical regression/live-call checks were
+not repeated for this documentation-only change. Continue with actual daily
+work; address demonstrated blockers with small verified changes.
 Token savings remain an operational measurement, not a completion claim. Detailed
 observations and limits are in [verification](docs/VERIFICATION.md).
